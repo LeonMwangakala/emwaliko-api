@@ -116,7 +116,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
-    Route::post('/profile/picture', [ProfileController::class, 'updatePicture']);
+    Route::post('/profile/picture', [ProfileController::class, 'updateProfilePicture']);
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
     
     // Location routes
     Route::get('/countries', [LocationController::class, 'getCountries']);

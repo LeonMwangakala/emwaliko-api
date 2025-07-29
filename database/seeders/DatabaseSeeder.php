@@ -32,7 +32,7 @@ class DatabaseSeeder extends Seeder
             'first_name' => 'Admin',
             'last_name' => 'User',
             'email' => 'admin@kadirafiki.com',
-            'phone_number' => '+254700000000',
+            'phone_number' => '+255762000043',
             'bio' => 'KadiRafiki Team Member',
             'country' => 'Kenya',
             'region' => 'Nairobi',
