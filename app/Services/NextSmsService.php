@@ -71,4 +71,38 @@ class NextSmsService
         }
         return null;
     }
+
+    /**
+     * Get SMS balance from Next SMS API
+     * @return int
+     */
+    public function getBalance(): int
+    {
+        try {
+            if (!$this->baseUrl || !$this->auth) {
+                \Log::warning('Next SMS credentials not configured');
+                return 0;
+            }
+
+            $response = Http::withHeaders([
+                'Authorization' => $this->auth,
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+            ])->get($this->baseUrl . '/api/sms/v1/balance');
+
+            if ($response->successful()) {
+                $data = $response->json();
+                // Handle the actual API response structure
+                $balance = $data['sms_balance'] ?? $data['data']['balance'] ?? 0;
+                \Log::info('SMS balance fetched successfully: ' . $balance);
+                return (int) $balance;
+            }
+
+            \Log::error('Failed to fetch SMS balance. Status: ' . $response->status() . ', Body: ' . $response->body());
+            return 0;
+        } catch (\Exception $e) {
+            \Log::error('Exception while fetching SMS balance: ' . $e->getMessage());
+            return 0;
+        }
+    }
 } 

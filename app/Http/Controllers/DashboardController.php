@@ -41,7 +41,7 @@ class DashboardController extends Controller
             $paidSales = Sales::where('status', 'Paid')->count();
             
             // Get SMS balance from Next SMS API
-            $smsBalance = $this->getSmsBalance();
+            $smsBalance = $this->smsService->getBalance();
             
             $stats = [
                 'total_events' => $totalEvents,
@@ -61,37 +61,6 @@ class DashboardController extends Controller
                 'message' => 'Failed to fetch dashboard statistics',
                 'error' => $e->getMessage()
             ], 500);
-        }
-    }
-
-    /**
-     * Get SMS balance from Next SMS API
-     */
-    private function getSmsBalance(): int
-    {
-        try {
-            $baseUrl = config('services.nextsms.base_url');
-            $auth = config('services.nextsms.auth');
-            
-            if (!$baseUrl || !$auth) {
-                return 0; // Return 0 if credentials not configured
-            }
-
-            $response = Http::withHeaders([
-                'Authorization' => $auth,
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
-            ])->get($baseUrl . '/api/sms/v1/balance');
-
-            if ($response->successful()) {
-                $data = $response->json();
-                return $data['data']['balance'] ?? 0;
-            }
-
-            return 0;
-        } catch (\Exception $e) {
-            \Log::error('Failed to fetch SMS balance: ' . $e->getMessage());
-            return 0;
         }
     }
 }
