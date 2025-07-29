@@ -153,6 +153,9 @@ class EventController extends Controller
             'eventType',
             'cardType',
             'package',
+            'country',
+            'region',
+            'district',
             'guests.cardClass'
         ]);
 
@@ -193,7 +196,10 @@ class EventController extends Controller
             'event_date' => 'sometimes|required|date',
             'notification_date' => 'nullable|string',
             'scanner_person' => 'nullable|string|max:255',
-            'card_design_path' => 'nullable|string'
+            'card_design_path' => 'nullable|string',
+            'country_id' => 'nullable|exists:countries,id',
+            'region_id' => 'nullable|exists:regions,id',
+            'district_id' => 'nullable|exists:districts,id'
         ]);
 
         // Check if package is being changed
@@ -222,7 +228,10 @@ class EventController extends Controller
             'customer',
             'eventType',
             'cardType',
-            'package'
+            'package',
+            'country',
+            'region',
+            'district'
         ]));
     }
 
