@@ -1,0 +1,280 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Notification;
+use App\Models\Event;
+use App\Models\Guest;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Validator;
+use App\Services\EventStatusService;
+use App\Services\NextSmsService;
+
+class NotificationController extends Controller
+{
+    public function index(): JsonResponse
+    {
+        $notifications = Notification::with(['guest'])->paginate(15);
+        return response()->json($notifications);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'guest_id' => 'required|exists:guests,id',
+            'message' => 'required|string',
+            'notification_type' => 'required|in:SMS,WhatsApp',
+            'status' => 'in:Sent,Not Sent',
+        ]);
+
+        $notification = Notification::create($validated);
+
+        return response()->json($notification->load('guest'), 201);
+    }
+
+    public function show(Notification $notification): JsonResponse
+    {
+        $notification->load(['guest.event']);
+        return response()->json($notification);
+    }
+
+    public function update(Request $request, Notification $notification): JsonResponse
+    {
+        $validated = $request->validate([
+            'message' => 'sometimes|required|string',
+            'notification_type' => 'sometimes|required|in:SMS,WhatsApp',
+            'status' => 'sometimes|in:Sent,Not Sent',
+        ]);
+
+        $notification->update($validated);
+
+        return response()->json($notification->load('guest'));
+    }
+
+    public function destroy(Notification $notification): JsonResponse
+    {
+        $notification->delete();
+        return response()->json(['message' => 'Notification deleted successfully']);
+    }
+
+    public function destroyEventNotification(Event $event, $notificationId): JsonResponse
+    {
+        $notification = Notification::whereHas('guest', function ($query) use ($event) {
+            $query->where('event_id', $event->id);
+        })->findOrFail($notificationId);
+        
+        // Check if notification has been sent
+        if ($notification->status === 'Sent') {
+            return response()->json([
+                'message' => 'Cannot delete notification that has been sent',
+                'error' => 'SENT_NOTIFICATION_DELETE_RESTRICTED'
+            ], 422);
+        }
+        
+        $notification->delete();
+        return response()->json(['message' => 'Notification deleted successfully']);
+    }
+
+    public function getEventNotifications(Request $request, Event $event): JsonResponse
+    {
+        // Get pagination parameters
+        $perPage = $request->get('per_page', 15);
+        $page = $request->get('page', 1);
+        $search = $request->get('search', '');
+        
+        $query = Notification::whereHas('guest', function ($query) use ($event) {
+            $query->where('event_id', $event->id);
+        })->with(['guest:id,name,phone_number']);
+        
+        // Apply search filter if search term is provided
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('guest', function ($guestQuery) use ($search) {
+                    $guestQuery->where('name', 'like', '%' . $search . '%')
+                               ->orWhere('phone_number', 'like', '%' . $search . '%');
+                })
+                ->orWhere('message', 'like', '%' . $search . '%')
+                ->orWhere('notification_type', 'like', '%' . $search . '%')
+                ->orWhere('status', 'like', '%' . $search . '%');
+            });
+        }
+        
+        $notifications = $query->orderBy('created_at', 'desc')
+                               ->paginate($perPage, ['*'], 'page', $page);
+        
+        return response()->json($notifications);
+    }
+
+    public function getAvailableGuestsForNotificationType(Request $request, Event $event): JsonResponse
+    {
+        $validated = $request->validate([
+            'notification_type' => 'required|in:SMS,WhatsApp'
+        ]);
+
+        $notificationType = $validated['notification_type'];
+
+        // Get all guests for this event
+        $allGuests = $event->guests()->get();
+
+        // Get guest IDs that already have this notification type
+        $existingGuestIds = Notification::whereHas('guest', function ($query) use ($event) {
+            $query->where('event_id', $event->id);
+        })
+        ->where('notification_type', $notificationType)
+        ->pluck('guest_id')
+        ->toArray();
+
+        // Filter out guests who already have this notification type
+        $availableGuests = $allGuests->filter(function ($guest) use ($existingGuestIds) {
+            return !in_array($guest->id, $existingGuestIds);
+        })->values();
+
+        return response()->json([
+            'available_guests' => $availableGuests,
+            'total_guests' => $allGuests->count(),
+            'filtered_out_count' => count($existingGuestIds),
+            'notification_type' => $notificationType
+        ]);
+    }
+
+    public function sendNotifications(Request $request, Event $event): JsonResponse
+    {
+        $validated = $request->validate([
+            'message' => 'required|string',
+            'notification_type' => 'required|in:SMS,WhatsApp',
+            'guest_ids' => 'array',
+            'guest_ids.*' => 'exists:guests,id'
+        ]);
+
+        $guests = $event->guests();
+        
+        if (!empty($validated['guest_ids'])) {
+            $guests = $guests->whereIn('id', $validated['guest_ids']);
+        }
+
+        $guests = $guests->get();
+        $notifications = [];
+        $smsToNumbers = [];
+        $phoneToNotificationId = [];
+
+        foreach ($guests as $guest) {
+            // Replace template variables with actual guest details
+            $personalizedMessage = $this->replaceTemplateVariables($validated['message'], $guest, $event);
+            
+            // Create notification based on type
+            $notification = Notification::create([
+                'guest_id' => $guest->id,
+                'message' => $personalizedMessage,
+                'notification_type' => $validated['notification_type'],
+                'status' => 'Not Sent',
+            ]);
+            $notifications[] = $notification;
+            
+            // If SMS, collect phone numbers for bulk sending
+            if ($validated['notification_type'] === 'SMS' && $guest->phone_number) {
+                $smsToNumbers[$personalizedMessage][] = $guest->phone_number;
+                $phoneToNotificationId[$guest->phone_number] = $notification->id;
+            }
+        }
+
+        // Send SMS via NextSmsService if needed
+        if ($validated['notification_type'] === 'SMS' && !empty($smsToNumbers)) {
+            $messages = [];
+            foreach ($smsToNumbers as $msg => $numbers) {
+                $messages[] = [
+                    'from' => 'KadiRafiki',
+                    'to' => $numbers,
+                    'text' => $msg,
+                ];
+            }
+            $smsService = new NextSmsService();
+            $reference = 'ref_' . time() . '_' . uniqid() . '_' . rand(1000, 9999);
+            $result = $smsService->sendBulk($messages, $reference);
+            
+            if ($result && isset($result['messages'])) {
+                foreach ($result['messages'] as $smsRes) {
+                    $to = $smsRes['to'];
+                    $statusName = $smsRes['status']['name'] ?? null;
+                    $messageId = $smsRes['messageId'] ?? null;
+                    
+                    if (isset($phoneToNotificationId[$to]) && $statusName === 'PENDING_ENROUTE' && $messageId) {
+                        $notification = Notification::find($phoneToNotificationId[$to]);
+                        if ($notification) {
+                            $notification->update([
+                                'status' => 'Sent',
+                                'sent_date' => now(),
+                                'sms_reference' => $reference,
+                                'message_id' => $messageId,
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Update event status
+        EventStatusService::updateEventStatus($event);
+        return response()->json([
+            'message' => count($notifications) . ' notifications created and ' . $validated['notification_type'] . ' sent',
+            'notifications' => $notifications
+        ], 201);
+    }
+
+    private function replaceTemplateVariables(string $template, Guest $guest, Event $event): string
+    {
+        $eventDate = $event->event_date ? \Carbon\Carbon::parse($event->event_date) : null;
+        
+        return str_replace(
+            [
+                '{guest_name}',
+                '{event_name}',
+                '{event_date}',
+                '{event_time}',
+                '{event_location}',
+                '{invite_code}',
+                '{rsvp_url}',
+                '{mpesa_number}',
+                '{airtel_number}'
+            ],
+            [
+                $guest->name,
+                $event->event_name,
+                $eventDate ? $eventDate->format('d/m/Y') : 'TBD',
+                $eventDate ? $eventDate->format('H:i') : 'TBD',
+                $event->event_location ?? 'TBD',
+                $guest->invite_code ?? 'KRGC123456',
+                'https://kadirafiki.com/rsvp/' . ($guest->invite_code ?? 'KRGC123456'),
+                '+255700000000',
+                '+255750000000'
+            ],
+            $template
+        );
+    }
+
+    public function markAsSent(Notification $notification): JsonResponse
+    {
+        $notification->update([
+            'status' => 'Sent',
+            'sent_date' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Notification marked as sent',
+            'notification' => $notification->load('guest')
+        ]);
+    }
+
+    public function markAsNotSent(Notification $notification): JsonResponse
+    {
+        $notification->update([
+            'status' => 'Not Sent',
+            'sent_date' => null,
+        ]);
+
+        return response()->json([
+            'message' => 'Notification marked as not sent',
+            'notification' => $notification->load('guest')
+        ]);
+    }
+}
