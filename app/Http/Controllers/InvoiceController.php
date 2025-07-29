@@ -44,7 +44,7 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice): JsonResponse
     {
-        $invoice->load(['sales', 'event.customer', 'sales.package']);
+        $invoice->load(['sales', 'event.customer', 'event.country', 'event.region', 'event.district', 'sales.package']);
         
         return response()->json($invoice);
     }
@@ -74,7 +74,7 @@ class InvoiceController extends Controller
             // Update sales status to Invoiced
             $sales->update(['status' => 'Invoiced']);
             
-            $invoice->load(['sales', 'event.customer', 'sales.package']);
+            $invoice->load(['sales', 'event.customer', 'event.country', 'event.region', 'event.district', 'sales.package']);
             
             return response()->json([
                 'message' => 'Invoice created successfully',
@@ -115,7 +115,7 @@ class InvoiceController extends Controller
                     $invoice->update(['status' => $newStatus]);
             }
 
-            $invoice->load(['sales', 'event.customer', 'sales.package']);
+            $invoice->load(['sales', 'event.customer', 'event.country', 'event.region', 'event.district', 'sales.package']);
 
             return response()->json([
                 'message' => 'Invoice status updated successfully',
