@@ -84,12 +84,12 @@ class Guest extends Model
                 ->size(300)
                 ->margin(10)
                 ->errorCorrection('M')
-                ->generate(env('FRONTEND_URL') . '/rsvp/' . $this->invite_code);
+                ->generate(route('guest.rsvp', $this->invite_code));
 
             $filename = 'qr_codes/' . $this->invite_code . '.png';
             Storage::disk('public')->put($filename, $qrCode);
 
-            $this->update(['qr_code_path' => $filename, 'updated_at' => now()]);
+            $this->update(['qr_code_path' => $filename]);
             
         } catch (\Exception $e) {
             \Log::error("Failed to generate QR code for guest {$this->id}: " . $e->getMessage());
