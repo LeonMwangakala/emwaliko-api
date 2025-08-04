@@ -50,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('events/{event}/guests/bulk', [GuestController::class, 'bulkCreate']);
     Route::post('events/{event}/guests/upload', [GuestController::class, 'uploadExcel']);
     Route::post('events/{event}/guests/generate-qr-codes', [GuestController::class, 'generateMissingQrCodes']);
+    Route::post('events/{event}/guests/regenerate-qr-codes', [GuestController::class, 'regenerateAllQrCodes']);
     Route::get('events/{event}/notifications', [NotificationController::class, 'getEventNotifications']);
     Route::post('events/{event}/notifications', [NotificationController::class, 'sendNotifications']);
     Route::delete('events/{event}/notifications/{notificationId}', [NotificationController::class, 'destroyEventNotification']);

@@ -326,4 +326,37 @@ class GuestController extends Controller
             ], 500);
         }
     }
+
+    public function regenerateAllQrCodes(Event $event): JsonResponse
+    {
+        try {
+            $allGuests = $event->guests()->get();
+            $totalGuests = $allGuests->count();
+            $successCount = 0;
+            $failedCount = 0;
+            
+            foreach ($allGuests as $guest) {
+                try {
+                    $guest->regenerateQrCode();
+                    $successCount++;
+                } catch (\Exception $e) {
+                    \Log::error("Failed to regenerate QR code for guest {$guest->id}: " . $e->getMessage());
+                    $failedCount++;
+                }
+            }
+            
+            return response()->json([
+                'message' => "Regenerated QR codes for {$successCount} out of {$totalGuests} guests",
+                'total_guests' => $totalGuests,
+                'success_count' => $successCount,
+                'failed_count' => $failedCount
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to regenerate QR codes',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 } 
