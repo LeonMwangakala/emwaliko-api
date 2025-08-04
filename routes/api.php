@@ -21,6 +21,7 @@ use App\Http\Controllers\PaymentSettingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\WebhookController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -32,6 +33,10 @@ Route::middleware('auth:sanctum')->group(function () {
 // RSVP routes (public)
 Route::get('guests/invite/{inviteCode}', [GuestController::class, 'getGuestByInviteCode'])->name('guest.invite');
 Route::post('guests/{inviteCode}/rsvp', [GuestController::class, 'rsvp'])->name('guest.rsvp');
+
+// WhatsApp webhook routes (public)
+Route::get('/webhook/whatsapp', [WebhookController::class, 'verify']);
+Route::post('/webhook/whatsapp', [WebhookController::class, 'handle']);
 
 // Protected routes (admin only)
 Route::middleware('auth:sanctum')->group(function () {

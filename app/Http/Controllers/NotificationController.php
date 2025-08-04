@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use App\Services\EventStatusService;
 use App\Services\NextSmsService;
+use App\Services\WhatsAppService;
 
 class NotificationController extends Controller
 {
@@ -207,6 +208,50 @@ class NotificationController extends Controller
                                 'sms_reference' => $reference,
                                 'message_id' => $messageId,
                             ]);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Send WhatsApp messages if needed
+        if ($validated['notification_type'] === 'WhatsApp') {
+            $whatsappService = new WhatsAppService();
+            $whatsappMessages = [];
+            $phoneToNotificationId = [];
+
+            foreach ($guests as $guest) {
+                if ($guest->phone_number) {
+                    $personalizedMessage = $this->replaceTemplateVariables($validated['message'], $guest, $event);
+                    $whatsappMessages[] = [
+                        'to' => $guest->phone_number,
+                        'text' => $personalizedMessage
+                    ];
+                    $phoneToNotificationId[$guest->phone_number] = $guest->id;
+                }
+            }
+
+            if (!empty($whatsappMessages)) {
+                $result = $whatsappService->sendBulkMessages($whatsappMessages);
+                
+                if ($result['success']) {
+                    foreach ($result['results'] as $whatsappRes) {
+                        $to = $whatsappRes['to'];
+                        $whatsappResult = $whatsappRes['result'];
+                        
+                        if ($whatsappResult['success'] && isset($phoneToNotificationId[$to])) {
+                            $notification = Notification::where('guest_id', $phoneToNotificationId[$to])
+                                                     ->where('notification_type', 'WhatsApp')
+                                                     ->where('status', 'Not Sent')
+                                                     ->first();
+                            
+                            if ($notification) {
+                                $notification->update([
+                                    'status' => 'Sent',
+                                    'sent_date' => now(),
+                                    'message_id' => $whatsappResult['message_id'] ?? null,
+                                ]);
+                            }
                         }
                     }
                 }

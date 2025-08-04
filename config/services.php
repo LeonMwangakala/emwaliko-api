@@ -47,4 +47,11 @@ return [
         'auth' => env('NEXTSMS_AUTH'),
     ],
 
+    'whatsapp' => [
+        'base_url' => env('WHATSAPP_BASE_URL', 'https://graph.facebook.com/v18.0'),
+        'access_token' => env('WHATSAPP_ACCESS_TOKEN'),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'webhook_verify_token' => env('WHATSAPP_WEBHOOK_VERIFY_TOKEN'),
+    ],
+
 ];
