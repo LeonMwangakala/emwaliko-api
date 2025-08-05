@@ -84,7 +84,7 @@ class Guest extends Model
                 ->size(300)
                 ->margin(10)
                 ->errorCorrection('M')
-                ->generate(env('FRONTEND_URL') . '/rsvp/' . $this->invite_code);
+                ->generate(route('guest.rsvp', $this->invite_code));
 
             $filename = 'qr_codes/' . $this->invite_code . '.png';
             Storage::disk('public')->put($filename, $qrCode);
@@ -125,11 +125,17 @@ class Guest extends Model
             $filePath = Storage::disk('public')->path($this->qr_code_path);
             
             if (!file_exists($filePath)) {
+                \Log::warning("QR code file not found: {$filePath}");
                 return '';
             }
 
             // Read file and convert to base64
             $imageData = file_get_contents($filePath);
+            if ($imageData === false) {
+                \Log::error("Failed to read QR code file: {$filePath}");
+                return '';
+            }
+            
             $base64Data = base64_encode($imageData);
             
             // Determine mime type

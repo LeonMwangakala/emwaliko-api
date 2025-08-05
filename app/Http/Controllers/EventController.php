@@ -57,13 +57,13 @@ class EventController extends Controller
         
         $events = $query->paginate($perPage);
 
-        // Convert event dates to local timezone (Africa/Dar_es_Salaam)
+        // Convert event dates to ISO string without timezone conversion
         $events->getCollection()->transform(function ($event) {
             if ($event->event_date) {
-                $event->event_date = Carbon::parse($event->event_date)->setTimezone('Africa/Dar_es_Salaam')->toISOString();
+                $event->event_date = Carbon::parse($event->event_date)->toISOString();
             }
             if ($event->notification_date) {
-                $event->notification_date = Carbon::parse($event->notification_date)->setTimezone('Africa/Dar_es_Salaam')->toISOString();
+                $event->notification_date = Carbon::parse($event->notification_date)->toISOString();
             }
             // Add card design base64 data
             $event->card_design_base64 = $event->card_design_base64;
@@ -78,13 +78,14 @@ class EventController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
+            'event_name' => 'required|string|max:255',
             'event_date' => 'required|date',
             'event_time' => ['required', 'string', 'regex:/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/'],
-            'location' => 'nullable|string',
+            'event_location' => 'nullable|string',
             'event_type_id' => 'nullable|exists:event_types,id',
             'customer_id' => 'nullable|exists:customers,id',
             'card_type_id' => 'nullable|exists:card_types,id',
+            'package_id' => 'nullable|exists:packages,id',
             'notification_date' => 'nullable|date',
             'notification_time' => ['nullable', 'string', 'regex:/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/'],
             'country_id' => 'nullable|exists:countries,id',
@@ -96,34 +97,32 @@ class EventController extends Controller
         // Merge date and time fields into datetime
         $eventDateTime = null;
         if ($validated['event_date'] && $validated['event_time']) {
-            // Create datetime in local timezone (Africa/Dar_es_Salaam)
-            $eventDateTime = \Carbon\Carbon::createFromFormat(
+            // Create datetime using user's input time without timezone conversion
+            $eventDateTime = Carbon::createFromFormat(
                 'Y-m-d H:i:s',
-                $validated['event_date'] . ' ' . $validated['event_time'] . ':00',
-                'Africa/Dar_es_Salaam'
-            )->utc();
+                $validated['event_date'] . ' ' . $validated['event_time'] . ':00'
+            );
         }
 
         $notificationDateTime = null;
         if ($validated['notification_date'] && $validated['notification_time']) {
-            // Create datetime in local timezone (Africa/Dar_es_Salaam)
-            $notificationDateTime = \Carbon\Carbon::createFromFormat(
+            // Create datetime using user's input time without timezone conversion
+            $notificationDateTime = Carbon::createFromFormat(
                 'Y-m-d H:i:s',
-                $validated['notification_date'] . ' ' . $validated['notification_time'] . ':00',
-                'Africa/Dar_es_Salaam'
-            )->utc();
+                $validated['notification_date'] . ' ' . $validated['notification_time'] . ':00'
+            );
         }
 
         // Prepare data for database
         $eventData = [
-            'event_name' => $validated['title'],
-            'event_location' => $validated['location'] ?? '',
+            'event_name' => $validated['event_name'],
+            'event_location' => $validated['event_location'] ?? '',
             'event_date' => $eventDateTime,
             'notification_date' => $notificationDateTime,
             'customer_id' => $validated['customer_id'] ?? 1, // Default to first customer if not provided
             'event_type_id' => $validated['event_type_id'] ?? 1, // Default to first event type if not provided
             'card_type_id' => $validated['card_type_id'] ?? 1, // Default to first card type if not provided
-            'package_id' => 1, // Default to first package
+            'package_id' => $validated['package_id'] ?? 1, // Default to first package
             'country_id' => $validated['country_id'] ?? null,
             'region_id' => $validated['region_id'] ?? null,
             'district_id' => $validated['district_id'] ?? null,
@@ -159,12 +158,12 @@ class EventController extends Controller
             'guests.cardClass'
         ]);
 
-        // Convert event dates to local timezone
-        if ($event->event_date) {
-            $event->event_date = Carbon::parse($event->event_date)->setTimezone('Africa/Dar_es_Salaam')->toISOString();
+        // Convert event dates to ISO string without timezone conversion
+        if ($event->event_date && !is_null($event->event_date)) {
+            $event->event_date = Carbon::parse($event->event_date)->toISOString();
         }
-        if ($event->notification_date) {
-            $event->notification_date = Carbon::parse($event->notification_date)->setTimezone('Africa/Dar_es_Salaam')->toISOString();
+        if ($event->notification_date && !is_null($event->notification_date)) {
+            $event->notification_date = Carbon::parse($event->notification_date)->toISOString();
         }
 
         // Add card design base64 data
@@ -194,7 +193,9 @@ class EventController extends Controller
             'package_id' => 'sometimes|required|exists:packages,id',
             'event_location' => 'sometimes|required|string',
             'event_date' => 'sometimes|required|date',
-            'notification_date' => 'nullable|string',
+            'event_time' => ['sometimes', 'required', 'string', 'regex:/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/'],
+            'notification_date' => 'nullable|date',
+            'notification_time' => ['nullable', 'string', 'regex:/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/'],
             'scanner_person' => 'nullable|string|max:255',
             'card_design_path' => 'nullable|string',
             'country_id' => 'nullable|exists:countries,id',
@@ -205,16 +206,27 @@ class EventController extends Controller
         // Check if package is being changed
         $packageChanged = isset($validated['package_id']) && $validated['package_id'] !== $event->package_id;
 
-        // Handle notification_date as raw string (no timezone conversion)
-        if (isset($validated['notification_date'])) {
-            // If notification_date is provided as a raw string, use it directly
-            // This allows for raw date-time strings without timezone conversion
-            $event->notification_date = $validated['notification_date'];
+        // Handle event date and time combination
+        if (isset($validated['event_date']) && isset($validated['event_time'])) {
+            $eventDateTime = Carbon::createFromFormat(
+                'Y-m-d H:i:s',
+                $validated['event_date'] . ' ' . $validated['event_time'] . ':00'
+            );
+            $validated['event_date'] = $eventDateTime;
         }
 
-        // Update other fields normally
+        // Handle notification date and time combination
+        if (isset($validated['notification_date']) && isset($validated['notification_time'])) {
+            $notificationDateTime = Carbon::createFromFormat(
+                'Y-m-d H:i:s',
+                $validated['notification_date'] . ' ' . $validated['notification_time'] . ':00'
+            );
+            $validated['notification_date'] = $notificationDateTime;
+        }
+
+        // Remove time fields from update data
         $updateData = array_filter($validated, function($key) {
-            return $key !== 'notification_date';
+            return !in_array($key, ['event_time', 'notification_time']);
         }, ARRAY_FILTER_USE_KEY);
 
         $event->update($updateData);
@@ -482,12 +494,12 @@ class EventController extends Controller
             return response()->json(['message' => 'Event not found'], 404);
         }
 
-        // Convert event dates to local timezone
-        if ($event->event_date) {
-            $event->event_date = Carbon::parse($event->event_date)->setTimezone('Africa/Dar_es_Salaam')->toISOString();
+        // Convert event dates to ISO string without timezone conversion
+        if ($event->event_date && !is_null($event->event_date)) {
+            $event->event_date = Carbon::parse($event->event_date)->toISOString();
         }
-        if ($event->notification_date) {
-            $event->notification_date = Carbon::parse($event->notification_date)->setTimezone('Africa/Dar_es_Salaam')->toISOString();
+        if ($event->notification_date && !is_null($event->notification_date)) {
+            $event->notification_date = Carbon::parse($event->notification_date)->toISOString();
         }
 
         // Add guests count
