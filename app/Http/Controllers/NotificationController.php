@@ -227,7 +227,14 @@ class NotificationController extends Controller
                         'to' => $guest->phone_number,
                         'text' => $personalizedMessage
                     ];
-                    $phoneToNotificationId[$guest->phone_number] = $guest->id;
+                    // Find the notification for this guest
+                    $notification = Notification::where('guest_id', $guest->id)
+                                             ->where('notification_type', 'WhatsApp')
+                                             ->where('status', 'Not Sent')
+                                             ->first();
+                    if ($notification) {
+                        $phoneToNotificationId[$guest->phone_number] = $notification->id;
+                    }
                 }
             }
 
@@ -240,10 +247,7 @@ class NotificationController extends Controller
                         $whatsappResult = $whatsappRes['result'];
                         
                         if ($whatsappResult['success'] && isset($phoneToNotificationId[$to])) {
-                            $notification = Notification::where('guest_id', $phoneToNotificationId[$to])
-                                                     ->where('notification_type', 'WhatsApp')
-                                                     ->where('status', 'Not Sent')
-                                                     ->first();
+                            $notification = Notification::find($phoneToNotificationId[$to]);
                             
                             if ($notification) {
                                 $notification->update([

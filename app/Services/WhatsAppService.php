@@ -28,12 +28,41 @@ class WhatsAppService
         try {
             $url = "{$this->baseUrl}/{$this->phoneNumberId}/messages";
             
+            // Try interactive message first (for first-time users)
             $payload = [
                 'messaging_product' => 'whatsapp',
                 'to' => $this->formatPhoneNumber($to),
-                'type' => 'text',
-                'text' => [
-                    'body' => $message
+                'type' => 'interactive',
+                'interactive' => [
+                    'type' => 'button',
+                    'body' => [
+                        'text' => $message
+                    ],
+                    'action' => [
+                        'buttons' => [
+                            [
+                                'type' => 'reply',
+                                'reply' => [
+                                    'id' => 'yes',
+                                    'title' => 'YES'
+                                ]
+                            ],
+                            [
+                                'type' => 'reply',
+                                'reply' => [
+                                    'id' => 'no',
+                                    'title' => 'NO'
+                                ]
+                            ],
+                            [
+                                'type' => 'reply',
+                                'reply' => [
+                                    'id' => 'maybe',
+                                    'title' => 'MAYBE'
+                                ]
+                            ]
+                        ]
+                    ]
                 ]
             ];
 
@@ -41,6 +70,23 @@ class WhatsAppService
                 'Authorization' => "Bearer {$this->accessToken}",
                 'Content-Type' => 'application/json',
             ])->post($url, $payload);
+
+            // If interactive message fails, try text message
+            if (!$response->successful()) {
+                $payload = [
+                    'messaging_product' => 'whatsapp',
+                    'to' => $this->formatPhoneNumber($to),
+                    'type' => 'text',
+                    'text' => [
+                        'body' => $message
+                    ]
+                ];
+
+                $response = Http::withHeaders([
+                    'Authorization' => "Bearer {$this->accessToken}",
+                    'Content-Type' => 'application/json',
+                ])->post($url, $payload);
+            }
 
             if ($response->successful()) {
                 $data = $response->json();
