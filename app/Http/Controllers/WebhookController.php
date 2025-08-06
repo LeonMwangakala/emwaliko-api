@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 
 class WebhookController extends Controller
 {
-    public function verify(Request $request): JsonResponse
+    public function verify(Request $request)
     {
         // Try both dot and underscore formats
         $mode = $request->get('hub.mode') ?: $request->get('hub_mode');
@@ -22,18 +22,21 @@ class WebhookController extends Controller
             'mode' => $mode,
             'token_received' => $token,
             'token_expected' => $webhookVerifyToken,
-            'challenge' => $challenge
+            'challenge' => $challenge,
+            'all_params' => $request->all()
         ]);
 
         if ($mode === 'subscribe' && $token === $webhookVerifyToken) {
             Log::info('WhatsApp webhook verified successfully');
-            return response()->json($challenge, 200);
+            // Return plain text response as required by Facebook
+            return response($challenge, 200)->header('Content-Type', 'text/plain');
         }
 
         Log::error('WhatsApp webhook verification failed', [
             'mode' => $mode,
             'token' => $token,
-            'expected_token' => $webhookVerifyToken
+            'expected_token' => $webhookVerifyToken,
+            'all_request_params' => $request->all()
         ]);
 
         return response()->json(['error' => 'Verification failed'], 403);
