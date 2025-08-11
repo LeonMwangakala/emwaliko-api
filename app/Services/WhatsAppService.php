@@ -23,12 +23,38 @@ class WhatsAppService
         $this->webhookVerifyToken = config('services.whatsapp.webhook_verify_token');
     }
 
-    public function sendMessage(string $to, string $message): array
+    public function sendInteractiveMessage(string $to, string $message, array $buttons = []): array
     {
         try {
             $url = "{$this->baseUrl}/{$this->phoneNumberId}/messages";
             
-            // Try interactive message first (for first-time users)
+            // Default RSVP buttons if none provided
+            if (empty($buttons)) {
+                $buttons = [
+                    [
+                        'type' => 'reply',
+                        'reply' => [
+                            'id' => 'yes',
+                            'title' => 'YES'
+                        ]
+                    ],
+                    [
+                        'type' => 'reply',
+                        'reply' => [
+                            'id' => 'no',
+                            'title' => 'NO'
+                        ]
+                    ],
+                    [
+                        'type' => 'reply',
+                        'reply' => [
+                            'id' => 'maybe',
+                            'title' => 'MAYBE'
+                        ]
+                    ]
+                ];
+            }
+            
             $payload = [
                 'messaging_product' => 'whatsapp',
                 'to' => $this->formatPhoneNumber($to),
@@ -39,29 +65,7 @@ class WhatsAppService
                         'text' => $message
                     ],
                     'action' => [
-                        'buttons' => [
-                            [
-                                'type' => 'reply',
-                                'reply' => [
-                                    'id' => 'yes',
-                                    'title' => 'YES'
-                                ]
-                            ],
-                            [
-                                'type' => 'reply',
-                                'reply' => [
-                                    'id' => 'no',
-                                    'title' => 'NO'
-                                ]
-                            ],
-                            [
-                                'type' => 'reply',
-                                'reply' => [
-                                    'id' => 'maybe',
-                                    'title' => 'MAYBE'
-                                ]
-                            ]
-                        ]
+                        'buttons' => $buttons
                     ]
                 ]
             ];
@@ -71,8 +75,58 @@ class WhatsAppService
                 'Content-Type' => 'application/json',
             ])->post($url, $payload);
 
-            // If interactive message fails, try text message
-            if (!$response->successful()) {
+            if ($response->successful()) {
+                $data = $response->json();
+                Log::info('WhatsApp interactive message sent successfully', [
+                    'to' => $to,
+                    'message_id' => $data['messages'][0]['id'] ?? null,
+                    'response' => $data
+                ]);
+                
+                return [
+                    'success' => true,
+                    'message_id' => $data['messages'][0]['id'] ?? null,
+                    'response' => $data
+                ];
+            } else {
+                $errorData = $response->json();
+                Log::error('WhatsApp interactive message failed', [
+                    'to' => $to,
+                    'status' => $response->status(),
+                    'error' => $errorData
+                ]);
+                
+                return [
+                    'success' => false,
+                    'error' => $errorData,
+                    'status' => $response->status(),
+                    'error_code' => $errorData['error']['code'] ?? null,
+                    'error_message' => $errorData['error']['message'] ?? 'Unknown error'
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error('WhatsApp interactive service exception', [
+                'to' => $to,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    public function sendMessage(string $to, string $message): array
+    {
+        try {
+            $url = "{$this->baseUrl}/{$this->phoneNumberId}/messages";
+            
+            // First, try interactive message (what you want)
+            $result = $this->sendInteractiveMessage($to, $message);
+            
+            // If interactive fails, try text message as fallback
+            if (!$result['success']) {
                 $payload = [
                     'messaging_product' => 'whatsapp',
                     'to' => $this->formatPhoneNumber($to),
@@ -86,23 +140,46 @@ class WhatsAppService
                     'Authorization' => "Bearer {$this->accessToken}",
                     'Content-Type' => 'application/json',
                 ])->post($url, $payload);
-            }
 
-            if ($response->successful()) {
-                $data = $response->json();
-                return [
-                    'success' => true,
-                    'message_id' => $data['messages'][0]['id'] ?? null,
-                    'response' => $data
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'error' => $response->json(),
-                    'status' => $response->status()
-                ];
+                if ($response->successful()) {
+                    $data = $response->json();
+                    Log::info('WhatsApp text message sent successfully (fallback)', [
+                        'to' => $to,
+                        'message_id' => $data['messages'][0]['id'] ?? null,
+                        'response' => $data
+                    ]);
+                    
+                    return [
+                        'success' => true,
+                        'message_id' => $data['messages'][0]['id'] ?? null,
+                        'response' => $data,
+                        'type' => 'text_fallback'
+                    ];
+                } else {
+                    $errorData = $response->json();
+                    Log::error('WhatsApp text message failed (fallback)', [
+                        'to' => $to,
+                        'status' => $response->status(),
+                        'error' => $errorData
+                    ]);
+                    
+                    return [
+                        'success' => false,
+                        'error' => $errorData,
+                        'status' => $response->status(),
+                        'error_code' => $errorData['error']['code'] ?? null,
+                        'error_message' => $errorData['error']['message'] ?? 'Unknown error'
+                    ];
+                }
             }
+            
+            return $result;
         } catch (\Exception $e) {
+            Log::error('WhatsApp service exception', [
+                'to' => $to,
+                'error' => $e->getMessage()
+            ]);
+            
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -137,6 +214,150 @@ class WhatsAppService
             'error_count' => $errorCount,
             'results' => $results
         ];
+    }
+
+    public function sendTemplateMessage(string $to, string $templateName, array $components = []): array
+    {
+        try {
+            $url = "{$this->baseUrl}/{$this->phoneNumberId}/messages";
+            
+            $payload = [
+                'messaging_product' => 'whatsapp',
+                'to' => $this->formatPhoneNumber($to),
+                'type' => 'template',
+                'template' => [
+                    'name' => $templateName,
+                    'language' => [
+                        'code' => 'en'
+                    ]
+                ]
+            ];
+
+            // Add components if provided
+            if (!empty($components)) {
+                $payload['template']['components'] = $components;
+            }
+
+            $response = Http::withHeaders([
+                'Authorization' => "Bearer {$this->accessToken}",
+                'Content-Type' => 'application/json',
+            ])->post($url, $payload);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                Log::info('WhatsApp template message sent successfully', [
+                    'to' => $to,
+                    'template' => $templateName,
+                    'message_id' => $data['messages'][0]['id'] ?? null,
+                    'response' => $data
+                ]);
+                
+                return [
+                    'success' => true,
+                    'message_id' => $data['messages'][0]['id'] ?? null,
+                    'response' => $data
+                ];
+            } else {
+                $errorData = $response->json();
+                Log::error('WhatsApp template message failed', [
+                    'to' => $to,
+                    'template' => $templateName,
+                    'status' => $response->status(),
+                    'error' => $errorData
+                ]);
+                
+                return [
+                    'success' => false,
+                    'error' => $errorData,
+                    'status' => $response->status(),
+                    'error_code' => $errorData['error']['code'] ?? null,
+                    'error_message' => $errorData['error']['message'] ?? 'Unknown error'
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error('WhatsApp template service exception', [
+                'to' => $to,
+                'template' => $templateName,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    public function sendInteractiveTemplateMessage(string $to, string $templateName, array $parameters = []): array
+    {
+        try {
+            $url = "{$this->baseUrl}/{$this->phoneNumberId}/messages";
+            
+            $payload = [
+                'messaging_product' => 'whatsapp',
+                'to' => $this->formatPhoneNumber($to),
+                'type' => 'template',
+                'template' => [
+                    'name' => $templateName,
+                    'language' => [
+                        'code' => 'en'
+                    ]
+                ]
+            ];
+
+            // Add components if provided
+            if (!empty($parameters)) {
+                $payload['template']['components'] = $parameters;
+            }
+
+            $response = Http::withHeaders([
+                'Authorization' => "Bearer {$this->accessToken}",
+                'Content-Type' => 'application/json',
+            ])->post($url, $payload);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                Log::info('WhatsApp interactive template message sent successfully', [
+                    'to' => $to,
+                    'template' => $templateName,
+                    'message_id' => $data['messages'][0]['id'] ?? null,
+                    'response' => $data
+                ]);
+                
+                return [
+                    'success' => true,
+                    'message_id' => $data['messages'][0]['id'] ?? null,
+                    'response' => $data
+                ];
+            } else {
+                $errorData = $response->json();
+                Log::error('WhatsApp interactive template message failed', [
+                    'to' => $to,
+                    'template' => $templateName,
+                    'status' => $response->status(),
+                    'error' => $errorData
+                ]);
+                
+                return [
+                    'success' => false,
+                    'error' => $errorData,
+                    'status' => $response->status(),
+                    'error_code' => $errorData['error']['code'] ?? null,
+                    'error_message' => $errorData['error']['message'] ?? 'Unknown error'
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error('WhatsApp interactive template service exception', [
+                'to' => $to,
+                'template' => $templateName,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
     }
 
     public function verifyWebhookSignature(string $signature, string $body): bool

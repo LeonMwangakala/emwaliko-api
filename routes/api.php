@@ -37,6 +37,11 @@ Route::post('guests/{inviteCode}/rsvp', [GuestController::class, 'rsvp'])->name(
 // WhatsApp webhook routes (public)
 Route::get('/webhook/whatsapp', [WebhookController::class, 'verify']);
 Route::post('/webhook/whatsapp', [WebhookController::class, 'handle']);
+Route::post('/webhook/whatsapp/test', [WebhookController::class, 'testWhatsApp']);
+Route::post('/webhook/whatsapp/test-template', [WebhookController::class, 'testTemplateWhatsApp']);
+Route::post('/webhook/whatsapp/test-interactive', [WebhookController::class, 'testInteractiveWhatsApp']);
+Route::post('/webhook/whatsapp/test-interactive-template', [WebhookController::class, 'testInteractiveTemplateWhatsApp']);
+Route::post('/webhook/whatsapp/test-guest-card', [WebhookController::class, 'testGuestCardGeneration']);
 
 // Protected routes (admin only)
 Route::middleware('auth:sanctum')->group(function () {

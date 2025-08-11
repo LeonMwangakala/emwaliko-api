@@ -98,4 +98,176 @@ class WebhookController extends Controller
             ], 500);
         }
     }
+
+    public function testWhatsApp(Request $request): JsonResponse
+    {
+        try {
+            $phone = $request->input('phone');
+            $message = $request->input('message', 'Test message from Kadirafiki');
+            
+            if (!$phone) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Phone number is required'
+                ], 400);
+            }
+            
+            $whatsappService = new WhatsAppService();
+            $result = $whatsappService->sendMessage($phone, $message);
+            
+            return response()->json([
+                'success' => $result['success'],
+                'data' => $result,
+                'message' => $result['success'] 
+                    ? 'Message sent successfully. Check your WhatsApp.' 
+                    : 'Failed to send message. Check error details.'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function testTemplateWhatsApp(Request $request): JsonResponse
+    {
+        try {
+            $phone = $request->input('phone');
+            $templateName = $request->input('template', 'hello_world');
+            
+            if (!$phone) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Phone number is required'
+                ], 400);
+            }
+            
+            $whatsappService = new WhatsAppService();
+            $result = $whatsappService->sendTemplateMessage($phone, $templateName);
+            
+            return response()->json([
+                'success' => $result['success'],
+                'data' => $result,
+                'message' => $result['success'] 
+                    ? 'Template message sent successfully. Check your WhatsApp.' 
+                    : 'Failed to send template message. Check error details.'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function testInteractiveWhatsApp(Request $request): JsonResponse
+    {
+        try {
+            $phone = $request->input('phone');
+            $message = $request->input('message', 'Hello! You are invited to our event. Please RSVP:');
+            
+            if (!$phone) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Phone number is required'
+                ], 400);
+            }
+            
+            $whatsappService = new WhatsAppService();
+            $result = $whatsappService->sendInteractiveMessage($phone, $message);
+            
+            return response()->json([
+                'success' => $result['success'],
+                'data' => $result,
+                'message' => $result['success'] 
+                    ? 'Interactive message sent successfully with RSVP buttons. Check your WhatsApp.' 
+                    : 'Failed to send interactive message. Check error details.'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function testInteractiveTemplateWhatsApp(Request $request): JsonResponse
+    {
+        try {
+            $phone = $request->input('phone');
+            $templateName = $request->input('template', 'wedding_invitation_interactive');
+            $parameters = $request->input('parameters', []);
+            
+            if (!$phone) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Phone number is required'
+                ], 400);
+            }
+            
+            $whatsappService = new WhatsAppService();
+            $result = $whatsappService->sendInteractiveTemplateMessage($phone, $templateName, $parameters);
+            
+            return response()->json([
+                'success' => $result['success'],
+                'data' => $result,
+                'message' => $result['success'] 
+                    ? 'Interactive template message sent successfully with RSVP buttons. Check your WhatsApp.' 
+                    : 'Failed to send interactive template message. Check error details.'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function testGuestCardGeneration(Request $request): JsonResponse
+    {
+        try {
+            $guestId = $request->input('guest_id');
+            $eventId = $request->input('event_id');
+            
+            if (!$guestId || !$eventId) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Guest ID and Event ID are required'
+                ], 400);
+            }
+            
+            $guest = \App\Models\Guest::find($guestId);
+            $event = \App\Models\Event::find($eventId);
+            
+            if (!$guest || !$event) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Guest or Event not found'
+                ], 400);
+            }
+            
+            $guestCardService = new \App\Services\GuestCardService();
+            $guestCardBase64 = $guestCardService->generateGuestCard($guest, $event);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Guest card generated successfully',
+                'guest_name' => $guest->name,
+                'event_name' => $event->event_name,
+                'card_base64_length' => strlen($guestCardBase64),
+                'card_preview' => 'data:image/png;base64,' . substr($guestCardBase64, 0, 100) . '...'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

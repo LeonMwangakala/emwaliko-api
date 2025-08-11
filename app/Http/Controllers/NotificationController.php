@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Services\EventStatusService;
 use App\Services\NextSmsService;
 use App\Services\WhatsAppService;
+use App\Services\GuestCardService;
 
 class NotificationController extends Controller
 {
@@ -217,16 +218,11 @@ class NotificationController extends Controller
         // Send WhatsApp messages if needed
         if ($validated['notification_type'] === 'WhatsApp') {
             $whatsappService = new WhatsAppService();
-            $whatsappMessages = [];
+            $guestCardService = new GuestCardService();
             $phoneToNotificationId = [];
 
             foreach ($guests as $guest) {
                 if ($guest->phone_number) {
-                    $personalizedMessage = $this->replaceTemplateVariables($validated['message'], $guest, $event);
-                    $whatsappMessages[] = [
-                        'to' => $guest->phone_number,
-                        'text' => $personalizedMessage
-                    ];
                     // Find the notification for this guest
                     $notification = Notification::where('guest_id', $guest->id)
                                              ->where('notification_type', 'WhatsApp')
@@ -238,25 +234,70 @@ class NotificationController extends Controller
                 }
             }
 
-            if (!empty($whatsappMessages)) {
-                $result = $whatsappService->sendBulkMessages($whatsappMessages);
-                
-                if ($result['success']) {
-                    foreach ($result['results'] as $whatsappRes) {
-                        $to = $whatsappRes['to'];
-                        $whatsappResult = $whatsappRes['result'];
+            // Send interactive template messages
+            foreach ($guests as $guest) {
+                if ($guest->phone_number) {
+                    try {
+                        $eventDate = $event->event_date ? \Carbon\Carbon::parse($event->event_date) : null;
                         
-                        if ($whatsappResult['success'] && isset($phoneToNotificationId[$to])) {
-                            $notification = Notification::find($phoneToNotificationId[$to]);
+                        // Generate personalized guest card as public URL
+                        $guestCardUrl = $guestCardService->generateGuestCard($guest, $event);
+                        
+                        // Prepare template parameters with guest card as header
+                        $templateParameters = [
+                            [
+                                'type' => 'header',
+                                'parameters' => [
+                                    [
+                                        'type' => 'image',
+                                        'image' => [
+                                            'link' => $guestCardUrl
+                                        ]
+                                    ]
+                                ]
+                            ],
+                            [
+                                'type' => 'body',
+                                'parameters' => [
+                                    ['type' => 'text', 'text' => $guest->name],
+                                    ['type' => 'text', 'text' => $event->event_name],
+                                    ['type' => 'text', 'text' => $eventDate ? $eventDate->format('d/m/Y') : 'TBD'],
+                                    ['type' => 'text', 'text' => $eventDate ? $eventDate->format('H:i') : 'TBD'],
+                                    ['type' => 'text', 'text' => $event->event_location ?? 'TBD'],
+                                    ['type' => 'text', 'text' => $guest->invite_code ?? 'KRGC123456']
+                                ]
+                            ]
+                        ];
+
+                        // Get template name based on event type
+                        $templateName = strtolower($event->eventType->name ?? 'wedding') . '_invitation_interactive';
+                        
+                        $result = $whatsappService->sendInteractiveTemplateMessage(
+                            $guest->phone_number, 
+                            $templateName, 
+                            $templateParameters
+                        );
+                        
+                        if ($result['success'] && isset($phoneToNotificationId[$guest->phone_number])) {
+                            $notification = Notification::find($phoneToNotificationId[$guest->phone_number]);
                             
                             if ($notification) {
                                 $notification->update([
                                     'status' => 'Sent',
                                     'sent_date' => now(),
-                                    'message_id' => $whatsappResult['message_id'] ?? null,
+                                    'message_id' => $result['message_id'] ?? null,
                                 ]);
                             }
                         }
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send WhatsApp message to guest', [
+                            'guest_id' => $guest->id,
+                            'phone' => $guest->phone_number,
+                            'error' => $e->getMessage()
+                        ]);
+                        
+                        // Continue with other guests even if one fails
+                        continue;
                     }
                 }
             }
@@ -299,6 +340,27 @@ class NotificationController extends Controller
             ],
             $template
         );
+    }
+
+    private function getWhatsAppTemplateName(Event $event): string
+    {
+        $eventType = strtolower($event->eventType->name ?? 'wedding');
+        
+        // Map event types to template names
+        $templateMap = [
+            'wedding' => 'wedding_invitation_interactive',
+            'birthday' => 'birthday_invitation_interactive',
+            'graduation' => 'graduation_invitation_interactive',
+            'anniversary' => 'anniversary_invitation_interactive',
+            'corporate event' => 'corporate_event_interactive',
+            'conference' => 'conference_invitation_interactive',
+            'seminar' => 'seminar_invitation_interactive',
+            'workshop' => 'workshop_invitation_interactive',
+            'send-off' => 'sendoff_invitation_interactive',
+            'baby shower' => 'babyshower_invitation_interactive'
+        ];
+        
+        return $templateMap[$eventType] ?? 'wedding_invitation_interactive';
     }
 
     public function markAsSent(Notification $notification): JsonResponse
