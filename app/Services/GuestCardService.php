@@ -131,16 +131,16 @@ class GuestCardService
             if ($guest->qr_code_path) {
                 $qrPath = storage_path('app/public/' . $guest->qr_code_path);
                 if (file_exists($qrPath)) {
-                    $qrSize = (int)(150 * $scale); // Scale QR size proportionally
+                    $qrSize = (int)(100 * $scale); // Smaller QR size
                     return $manager->read($qrPath)->resize($qrSize, $qrSize);
                 }
             }
 
             // Generate QR code if not exists
-            $qrSize = (int)(150 * $scale); // Scale QR size proportionally
+            $qrSize = (int)(100 * $scale); // Smaller QR size
             $qrCode = QrCode::format('png')
                 ->size($qrSize)
-                ->margin(5) // Smaller margin for better proportion
+                ->margin(3) // Smaller margin for better proportion
                 ->errorCorrection('M')
                 ->generate(route('guest.rsvp', $guest->invite_code));
 
