@@ -82,6 +82,9 @@ class EventController extends Controller
             'event_date' => 'required|date',
             'event_time' => ['required', 'string', 'regex:/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/'],
             'event_location' => 'nullable|string',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'google_maps_url' => 'nullable|url',
             'event_type_id' => 'nullable|exists:event_types,id',
             'customer_id' => 'nullable|exists:customers,id',
             'card_type_id' => 'nullable|exists:card_types,id',
@@ -117,6 +120,9 @@ class EventController extends Controller
         $eventData = [
             'event_name' => $validated['event_name'],
             'event_location' => $validated['event_location'] ?? '',
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
+            'google_maps_url' => $validated['google_maps_url'] ?? null,
             'event_date' => $eventDateTime,
             'notification_date' => $notificationDateTime,
             'customer_id' => $validated['customer_id'] ?? 1, // Default to first customer if not provided

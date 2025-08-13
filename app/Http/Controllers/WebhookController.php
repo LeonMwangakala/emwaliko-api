@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 
 class WebhookController extends Controller
 {
@@ -263,6 +264,128 @@ class WebhookController extends Controller
                 'card_preview' => 'data:image/png;base64,' . substr($guestCardBase64, 0, 100) . '...'
             ]);
             
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function testGuestWeddingInvitation(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'phone' => 'required|string',
+                'guest_id' => 'required|exists:guests,id',
+                'event_id' => 'required|exists:events,id'
+            ]);
+
+            $guest = \App\Models\Guest::with(['cardClass'])->find($validated['guest_id']);
+            $event = \App\Models\Event::find($validated['event_id']);
+            
+            if (!$guest || !$event) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Guest or Event not found'
+                ], 404);
+            }
+
+            $whatsappService = new WhatsAppService();
+            $guestCardService = new \App\Services\GuestCardService();
+
+            // Generate personalized guest card
+            $guestCardUrl = $guestCardService->generateGuestCard($guest, $event);
+            
+            $eventDate = $event->event_date ? \Carbon\Carbon::parse($event->event_date) : null;
+
+            // Generate Google Maps URL for the event
+            $googleMapsUrl = $event->generateGoogleMapsUrl();
+            
+            // Prepare parameters for guest_wedding_invitation template
+            $parameters = [
+                [
+                    'type' => 'header',
+                    'parameters' => [
+                        [
+                            'type' => 'image',
+                            'image' => [
+                                'link' => $guestCardUrl
+                            ]
+                        ]
+                    ]
+                ],
+                [
+                    'type' => 'body',
+                    'parameters' => [
+                        ['type' => 'text', 'text' => $guest->name], // 1. Guest Name
+                        ['type' => 'text', 'text' => $event->event_name], // 2. Event Names
+                        ['type' => 'text', 'text' => $eventDate ? $eventDate->format('d/m/Y') : 'TBD'], // 3. Event Date
+                        ['type' => 'text', 'text' => $eventDate ? $eventDate->format('H:i') : 'TBD'], // 4. Event Time
+                        ['type' => 'text', 'text' => $event->event_location ?? 'TBD'], // 5. Location Name
+                        ['type' => 'text', 'text' => $guest->invite_code ?? 'KRGC123456'] // 6. Invite Code
+                    ]
+                ]
+            ];
+
+            $result = $whatsappService->sendInteractiveTemplateMessage(
+                $validated['phone'],
+                'wedding_invitation_interactive',
+                $parameters
+            );
+
+            return response()->json([
+                'success' => $result['success'],
+                'message' => $result['success'] ? 'Guest wedding invitation sent successfully' : 'Failed to send invitation',
+                'guest_name' => $guest->name,
+                'event_name' => $event->event_name,
+                'card_class' => $guest->cardClass->name ?? 'Standard',
+                'invite_code' => $guest->invite_code,
+                'guest_card_url' => $guestCardUrl,
+                'result' => $result
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Test guest wedding invitation failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function listWhatsAppTemplates()
+    {
+        try {
+            $whatsappService = new WhatsAppService();
+            
+            // Try to get templates from WhatsApp API
+            $url = "https://graph.facebook.com/v18.0/{$whatsappService->getPhoneNumberId()}/message_templates?access_token={$whatsappService->getAccessToken()}";
+            
+            $response = Http::withHeaders([
+                'Authorization' => "Bearer {$whatsappService->getAccessToken()}",
+                'Content-Type' => 'application/json',
+            ])->get($url);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return response()->json([
+                    'success' => true,
+                    'templates' => $data['data'] ?? [],
+                    'total' => count($data['data'] ?? [])
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => $response->json(),
+                    'status' => $response->status()
+                ]);
+            }
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

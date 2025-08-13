@@ -42,23 +42,21 @@ class GuestCardService
             $originalWidth = $image->width();
             $originalHeight = $image->height();
 
-            // Calculate target dimensions while maintaining aspect ratio
-            // For WhatsApp compatibility, we'll use a reasonable size
+            // For WhatsApp compatibility, use a fixed size that works well
+            // WhatsApp header images work best with 16:9 aspect ratio
             $targetWidth = 1200;
-            $targetHeight = (int)($originalHeight * $targetWidth / $originalWidth);
+            $targetHeight = 675; // 16:9 aspect ratio
 
-            // Resize the card while maintaining aspect ratio
+            // Resize the card to fit WhatsApp requirements
             $image->resize($targetWidth, $targetHeight, function ($constraint) {
                 $constraint->aspectRatio();
                 $constraint->upsize();
             });
 
-            // Calculate scale factor for positioning and sizing
+            // Calculate scale factors for positioning
             $scaleX = $targetWidth / $originalWidth;
             $scaleY = $targetHeight / $originalHeight;
-
-            // Get QR code image with proportional sizing
-            $qrCodeImage = $this->getQrCodeImage($guest, $manager, $scaleX, $scaleY);
+            $scale = min($scaleX, $scaleY); // Use the smaller scale to maintain proportions
 
             // Get guest name and card class
             $guestName = $guest->name;
@@ -66,34 +64,38 @@ class GuestCardService
 
             // Add guest name if enabled
             if ($cardType->show_guest_name) {
+                $fontSize = max(24, (int)(48 * $scale)); // Minimum 24px, scale from 48px base
                 $this->addTextToImage(
                     $image,
                     $guestName,
-                    $cardType->name_position_x * $scaleX,
-                    $cardType->name_position_y * $scaleY,
-                    98 * min($scaleX, $scaleY), // Scale font size proportionally
+                    (int)($cardType->name_position_x * $scaleX),
+                    (int)($cardType->name_position_y * $scaleY),
+                    $fontSize,
                     '#000000'
                 );
             }
 
             // Add QR code if enabled
-            if ($qrCodeImage) {
-                $qrSize = 300 * min($scaleX, $scaleY); // Scale QR size proportionally
-                $image->place(
-                    $qrCodeImage,
-                    $cardType->qr_position_x * $scaleX - $qrSize/2,
-                    $cardType->qr_position_y * $scaleY - $qrSize/2
-                );
+            if ($cardType->show_qr_code) {
+                $qrCodeImage = $this->getQrCodeImage($guest, $manager, $scale);
+                if ($qrCodeImage) {
+                    $qrSize = (int)(150 * $scale); // Scale QR size proportionally, max 150px
+                    $qrX = (int)($cardType->qr_position_x * $scaleX - $qrSize/2);
+                    $qrY = (int)($cardType->qr_position_y * $scaleY - $qrSize/2);
+                    
+                    $image->place($qrCodeImage, $qrX, $qrY);
+                }
             }
 
             // Add card class if enabled
             if ($cardType->show_card_class && $cardClassName) {
+                $fontSize = max(18, (int)(36 * $scale)); // Minimum 18px, scale from 36px base
                 $this->addTextToImage(
                     $image,
                     $cardClassName,
-                    $cardType->card_class_position_x * $scaleX,
-                    $cardType->card_class_position_y * $scaleY,
-                    60 * min($scaleX, $scaleY), // Scale font size proportionally
+                    (int)($cardType->card_class_position_x * $scaleX),
+                    (int)($cardType->card_class_position_y * $scaleY),
+                    $fontSize,
                     '#333333'
                 );
             }
@@ -123,22 +125,22 @@ class GuestCardService
         }
     }
 
-    private function getQrCodeImage(Guest $guest, ImageManager $manager, float $scaleX, float $scaleY): ?\Intervention\Image\Image
+    private function getQrCodeImage(Guest $guest, ImageManager $manager, float $scale): ?\Intervention\Image\Image
     {
         try {
             if ($guest->qr_code_path) {
                 $qrPath = storage_path('app/public/' . $guest->qr_code_path);
                 if (file_exists($qrPath)) {
-                    $qrSize = (int)(300 * min($scaleX, $scaleY)); // Scale QR size proportionally
+                    $qrSize = (int)(150 * $scale); // Scale QR size proportionally
                     return $manager->read($qrPath)->resize($qrSize, $qrSize);
                 }
             }
 
             // Generate QR code if not exists
-            $qrSize = (int)(300 * min($scaleX, $scaleY)); // Scale QR size proportionally
+            $qrSize = (int)(150 * $scale); // Scale QR size proportionally
             $qrCode = QrCode::format('png')
                 ->size($qrSize)
-                ->margin(10)
+                ->margin(5) // Smaller margin for better proportion
                 ->errorCorrection('M')
                 ->generate(route('guest.rsvp', $guest->invite_code));
 
@@ -155,8 +157,8 @@ class GuestCardService
 
     private function addTextToImage($image, string $text, int $x, int $y, int $fontSize, string $color): void
     {
-        // Add text shadow effect
-        $image->text($text, $x + 2, $y + 2, function ($font) use ($fontSize) {
+        // Add text shadow effect for better visibility
+        $image->text($text, $x + 1, $y + 1, function ($font) use ($fontSize) {
             $font->size($fontSize);
             $font->color('#000000');
             $font->align('center');

@@ -23,6 +23,16 @@ class WhatsAppService
         $this->webhookVerifyToken = config('services.whatsapp.webhook_verify_token');
     }
 
+    public function getPhoneNumberId(): string
+    {
+        return $this->phoneNumberId;
+    }
+
+    public function getAccessToken(): string
+    {
+        return $this->accessToken;
+    }
+
     public function sendInteractiveMessage(string $to, string $message, array $buttons = []): array
     {
         try {
@@ -221,6 +231,9 @@ class WhatsAppService
         try {
             $url = "{$this->baseUrl}/{$this->phoneNumberId}/messages";
             
+            // Determine language code based on template name
+            $languageCode = $templateName === 'guest_wedding_invitation' ? 'en' : 'en';
+            
             $payload = [
                 'messaging_product' => 'whatsapp',
                 'to' => $this->formatPhoneNumber($to),
@@ -228,7 +241,7 @@ class WhatsAppService
                 'template' => [
                     'name' => $templateName,
                     'language' => [
-                        'code' => 'en'
+                        'code' => $languageCode
                     ]
                 ]
             ];
@@ -293,6 +306,9 @@ class WhatsAppService
         try {
             $url = "{$this->baseUrl}/{$this->phoneNumberId}/messages";
             
+            // Determine language code based on template name
+            $languageCode = $templateName === 'guest_wedding_invitation' ? 'en' : 'en';
+            
             $payload = [
                 'messaging_product' => 'whatsapp',
                 'to' => $this->formatPhoneNumber($to),
@@ -300,7 +316,7 @@ class WhatsAppService
                 'template' => [
                     'name' => $templateName,
                     'language' => [
-                        'code' => 'en'
+                        'code' => $languageCode
                     ]
                 ]
             ];
@@ -416,7 +432,20 @@ class WhatsAppService
     private function processIncomingMessage(array $message): array
     {
         $from = $message['from'] ?? null;
-        $text = $message['text']['body'] ?? null;
+        $text = null;
+        $messageType = 'text';
+
+        // Handle different message types
+        if (isset($message['text']['body'])) {
+            $text = $message['text']['body'];
+            $messageType = 'text';
+        } elseif (isset($message['interactive']['button_reply']['payload'])) {
+            $text = $message['interactive']['button_reply']['payload'];
+            $messageType = 'button';
+        } elseif (isset($message['interactive']['list_reply']['id'])) {
+            $text = $message['interactive']['list_reply']['id'];
+            $messageType = 'list';
+        }
 
         if (!$from || !$text) {
             return ['type' => 'message', 'success' => false, 'error' => 'Missing required fields'];
@@ -430,7 +459,8 @@ class WhatsAppService
                 'success' => false,
                 'error' => 'Guest not found',
                 'from' => $from,
-                'text' => $text
+                'text' => $text,
+                'message_type' => $messageType
             ];
         }
 
@@ -442,6 +472,7 @@ class WhatsAppService
             'guest_id' => $guest->id,
             'from' => $from,
             'text' => $text,
+            'message_type' => $messageType,
             'rsvp_response' => $rsvpResponse
         ];
     }
@@ -477,9 +508,41 @@ class WhatsAppService
     {
         $text = strtolower(trim($text));
         
-        $yesKeywords = ['yes', 'y', 'accept', 'attending', 'will attend', 'coming', 'ok', 'okay'];
-        $noKeywords = ['no', 'n', 'decline', 'not attending', 'not coming', 'sorry', 'cant', "can't"];
-        $maybeKeywords = ['maybe', 'm', 'unsure', 'not sure', 'might', 'probably'];
+        // Handle button payloads from interactive messages
+        if ($text === 'rsvp_yes') {
+            $guest->update(['rsvp_status' => 'Yes']);
+            return [
+                'success' => true,
+                'response' => 'Yes',
+                'status' => 'Yes',
+                'source' => 'button'
+            ];
+        }
+        
+        if ($text === 'rsvp_no') {
+            $guest->update(['rsvp_status' => 'No']);
+            return [
+                'success' => true,
+                'response' => 'No',
+                'status' => 'No',
+                'source' => 'button'
+            ];
+        }
+        
+        if ($text === 'rsvp_maybe') {
+            $guest->update(['rsvp_status' => 'Maybe']);
+            return [
+                'success' => true,
+                'response' => 'Maybe',
+                'status' => 'Maybe',
+                'source' => 'button'
+            ];
+        }
+        
+        // Handle text-based responses
+        $yesKeywords = ['yes', 'y', 'accept', 'attending', 'will attend', 'coming', 'ok', 'okay', 'ndio', 'sawa'];
+        $noKeywords = ['no', 'n', 'decline', 'not attending', 'not coming', 'sorry', 'cant', "can't", 'hapana', 'siwezi'];
+        $maybeKeywords = ['maybe', 'm', 'unsure', 'not sure', 'might', 'probably', 'labda', 'sijui'];
 
         $response = null;
         $status = null;
@@ -500,7 +563,8 @@ class WhatsAppService
             return [
                 'success' => true,
                 'response' => $response,
-                'status' => $status
+                'status' => $status,
+                'source' => 'text'
             ];
         }
 

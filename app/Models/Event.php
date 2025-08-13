@@ -35,6 +35,9 @@ class Event extends Model
         'card_type_id',
         'package_id',
         'event_location',
+        'latitude',
+        'longitude',
+        'google_maps_url',
         'event_date',
         'notification_date',
         'card_design_path',
@@ -136,5 +139,41 @@ class Event extends Model
             \Log::error("Failed to get card design base64 for event {$this->id}: " . $e->getMessage());
             return '';
         }
+    }
+
+    public function getGoogleMapsUrlAttribute(): string
+    {
+        // If we have a stored Google Maps URL, use it
+        if (isset($this->attributes['google_maps_url']) && $this->attributes['google_maps_url']) {
+            return $this->attributes['google_maps_url'];
+        }
+
+        // If we have coordinates, generate a Google Maps URL
+        if (isset($this->attributes['latitude']) && isset($this->attributes['longitude']) && 
+            $this->attributes['latitude'] && $this->attributes['longitude']) {
+            $location = urlencode($this->event_location ?? '');
+            return "https://maps.google.com/?q={$this->attributes['latitude']},{$this->attributes['longitude']}&z=15";
+        }
+
+        // If we only have location name, search for it
+        if ($this->event_location) {
+            $location = urlencode($this->event_location);
+            return "https://maps.google.com/?q={$location}";
+        }
+
+        // Fallback to a general location search
+        return "https://maps.google.com/";
+    }
+
+    public function generateGoogleMapsUrl(): string
+    {
+        $url = $this->getGoogleMapsUrlAttribute();
+        
+        // Update the stored URL if we generated one
+        if ($url !== (isset($this->attributes['google_maps_url']) ? $this->attributes['google_maps_url'] : null)) {
+            $this->update(['google_maps_url' => $url]);
+        }
+        
+        return $url;
     }
 } 

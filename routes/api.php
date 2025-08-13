@@ -42,6 +42,8 @@ Route::post('/webhook/whatsapp/test-template', [WebhookController::class, 'testT
 Route::post('/webhook/whatsapp/test-interactive', [WebhookController::class, 'testInteractiveWhatsApp']);
 Route::post('/webhook/whatsapp/test-interactive-template', [WebhookController::class, 'testInteractiveTemplateWhatsApp']);
 Route::post('/webhook/whatsapp/test-guest-card', [WebhookController::class, 'testGuestCardGeneration']);
+Route::post('/webhook/whatsapp/test-guest-wedding-invitation', [WebhookController::class, 'testGuestWeddingInvitation']);
+Route::get('/webhook/whatsapp/templates', [WebhookController::class, 'listWhatsAppTemplates']);
 
 // Protected routes (admin only)
 Route::middleware('auth:sanctum')->group(function () {

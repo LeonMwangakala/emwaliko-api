@@ -243,6 +243,9 @@ class NotificationController extends Controller
                         // Generate personalized guest card as public URL
                         $guestCardUrl = $guestCardService->generateGuestCard($guest, $event);
                         
+                        // Generate Google Maps URL for the event
+                        $googleMapsUrl = $event->generateGoogleMapsUrl();
+                        
                         // Prepare template parameters with guest card as header
                         $templateParameters = [
                             [
@@ -259,18 +262,18 @@ class NotificationController extends Controller
                             [
                                 'type' => 'body',
                                 'parameters' => [
-                                    ['type' => 'text', 'text' => $guest->name],
-                                    ['type' => 'text', 'text' => $event->event_name],
-                                    ['type' => 'text', 'text' => $eventDate ? $eventDate->format('d/m/Y') : 'TBD'],
-                                    ['type' => 'text', 'text' => $eventDate ? $eventDate->format('H:i') : 'TBD'],
-                                    ['type' => 'text', 'text' => $event->event_location ?? 'TBD'],
-                                    ['type' => 'text', 'text' => $guest->invite_code ?? 'KRGC123456']
+                                    ['type' => 'text', 'text' => $guest->name], // 1. Guest Name
+                                    ['type' => 'text', 'text' => $event->event_name], // 2. Event Names
+                                    ['type' => 'text', 'text' => $eventDate ? $eventDate->format('d/m/Y') : 'TBD'], // 3. Event Date
+                                    ['type' => 'text', 'text' => $eventDate ? $eventDate->format('H:i') : 'TBD'], // 4. Event Time
+                                    ['type' => 'text', 'text' => $event->event_location ?? 'TBD'], // 5. Location Name
+                                    ['type' => 'text', 'text' => $guest->invite_code ?? 'KRGC123456'] // 6. Invite Code
                                 ]
                             ]
                         ];
 
-                        // Get template name based on event type
-                        $templateName = strtolower($event->eventType->name ?? 'wedding') . '_invitation_interactive';
+                        // Use the new template name
+                        $templateName = 'wedding_invitation_interactive';
                         
                         $result = $whatsappService->sendInteractiveTemplateMessage(
                             $guest->phone_number, 
