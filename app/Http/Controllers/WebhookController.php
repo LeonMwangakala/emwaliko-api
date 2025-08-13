@@ -326,6 +326,50 @@ class WebhookController extends Controller
                         ['type' => 'text', 'text' => $guest->invite_code ?? 'KRGC123456'], // 6. Invite Code
                         ['type' => 'text', 'text' => $guest->cardClass->name ?? 'VIP'] // 7. Card Class
                     ]
+                ],
+                [
+                    'type' => 'button',
+                    'sub_type' => 'quick_reply',
+                    'index' => 0,
+                    'parameters' => [
+                        [
+                            'type' => 'text',
+                            'text' => 'RSVP_YES'
+                        ]
+                    ]
+                ],
+                [
+                    'type' => 'button',
+                    'sub_type' => 'quick_reply',
+                    'index' => 1,
+                    'parameters' => [
+                        [
+                            'type' => 'text',
+                            'text' => 'RSVP_NO'
+                        ]
+                    ]
+                ],
+                [
+                    'type' => 'button',
+                    'sub_type' => 'quick_reply',
+                    'index' => 2,
+                    'parameters' => [
+                        [
+                            'type' => 'text',
+                            'text' => 'RSVP_MAYBE'
+                        ]
+                    ]
+                ],
+                [
+                    'type' => 'button',
+                    'sub_type' => 'url',
+                    'index' => 3,
+                    'parameters' => [
+                        [
+                            'type' => 'text',
+                            'text' => $googleMapsUrl
+                        ]
+                    ]
                 ]
             ];
 
