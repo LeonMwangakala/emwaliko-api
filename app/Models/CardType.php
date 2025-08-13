@@ -20,7 +20,8 @@ class CardType extends Model
         'card_class_position_x',
         'card_class_position_y',
         'show_card_class',
-        'show_guest_name'
+        'show_guest_name',
+        'show_qr_code'
     ];
 
     protected $casts = [
@@ -32,6 +33,7 @@ class CardType extends Model
         'card_class_position_y' => 'decimal:2',
         'show_card_class' => 'boolean',
         'show_guest_name' => 'boolean',
+        'show_qr_code' => 'boolean',
     ];
 
     public function events(): HasMany

@@ -64,12 +64,17 @@ class GuestCardService
 
             // Add guest name if enabled
             if ($cardType->show_guest_name) {
-                $fontSize = max(24, (int)(48 * $scale)); // Minimum 24px, scale from 48px base
+                $fontSize = max(72, (int)(144 * $scale)); // Increased by 3x: minimum 72px, scale from 144px base
+                
+                // Convert percentage positions to absolute pixels
+                $nameX = (int)(($cardType->name_position_x / 100) * $targetWidth);
+                $nameY = (int)(($cardType->name_position_y / 100) * $targetHeight);
+                
                 $this->addTextToImage(
                     $image,
                     $guestName,
-                    (int)($cardType->name_position_x * $scaleX),
-                    (int)($cardType->name_position_y * $scaleY),
+                    $nameX,
+                    $nameY,
                     $fontSize,
                     '#FFFFFF'
                 );
@@ -79,9 +84,11 @@ class GuestCardService
             if ($cardType->show_qr_code) {
                 $qrCodeImage = $this->getQrCodeImage($guest, $manager, $scale);
                 if ($qrCodeImage) {
-                    $qrSize = (int)(100 * $scale); // Smaller QR size, max 100px
-                    $qrX = (int)($cardType->qr_position_x * $scaleX - $qrSize/2);
-                    $qrY = (int)($cardType->qr_position_y * $scaleY - $qrSize/2);
+                    $qrSize = (int)(150 * $scale); // Increased QR size for better visibility
+                    
+                    // Convert percentage positions to absolute pixels
+                    $qrX = (int)(($cardType->qr_position_x / 100) * $targetWidth - $qrSize/2);
+                    $qrY = (int)(($cardType->qr_position_y / 100) * $targetHeight - $qrSize/2);
                     
                     $image->place($qrCodeImage, $qrX, $qrY);
                 }
@@ -89,12 +96,17 @@ class GuestCardService
 
             // Add card class if enabled
             if ($cardType->show_card_class && $cardClassName) {
-                $fontSize = max(18, (int)(36 * $scale)); // Minimum 18px, scale from 36px base
+                $fontSize = max(54, (int)(108 * $scale)); // Increased by 3x: minimum 54px, scale from 108px base
+                
+                // Convert percentage positions to absolute pixels
+                $classX = (int)(($cardType->card_class_position_x / 100) * $targetWidth);
+                $classY = (int)(($cardType->card_class_position_y / 100) * $targetHeight);
+                
                 $this->addTextToImage(
                     $image,
                     $cardClassName,
-                    (int)($cardType->card_class_position_x * $scaleX),
-                    (int)($cardType->card_class_position_y * $scaleY),
+                    $classX,
+                    $classY,
                     $fontSize,
                     '#FFFFFF'
                 );
@@ -131,16 +143,16 @@ class GuestCardService
             if ($guest->qr_code_path) {
                 $qrPath = storage_path('app/public/' . $guest->qr_code_path);
                 if (file_exists($qrPath)) {
-                    $qrSize = (int)(100 * $scale); // Smaller QR size
+                    $qrSize = (int)(150 * $scale); // Increased QR size for better visibility
                     return $manager->read($qrPath)->resize($qrSize, $qrSize);
                 }
             }
 
             // Generate QR code if not exists
-            $qrSize = (int)(100 * $scale); // Smaller QR size
+            $qrSize = (int)(150 * $scale); // Increased QR size for better visibility
             $qrCode = QrCode::format('png')
                 ->size($qrSize)
-                ->margin(3) // Smaller margin for better proportion
+                ->margin(5) // Increased margin for better proportion
                 ->errorCorrection('M')
                 ->generate(route('guest.rsvp', $guest->invite_code));
 
