@@ -45,6 +45,12 @@ Route::post('/webhook/whatsapp/test-guest-card', [WebhookController::class, 'tes
 Route::post('/webhook/whatsapp/test-guest-wedding-invitation', [WebhookController::class, 'testGuestWeddingInvitation']);
 Route::get('/webhook/whatsapp/templates', [WebhookController::class, 'listWhatsAppTemplates']);
 
+// Location routes (public)
+Route::get('/countries', [LocationController::class, 'getCountries']);
+Route::get('/regions/{countryId}', [LocationController::class, 'getRegions']);
+Route::get('/districts/{regionId}', [LocationController::class, 'getDistricts']);
+Route::get('/locations', [LocationController::class, 'getAllLocations']);
+
 // Protected routes (admin only)
 Route::middleware('auth:sanctum')->group(function () {
     // Event routes
