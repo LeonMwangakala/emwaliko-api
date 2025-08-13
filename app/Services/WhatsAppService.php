@@ -232,7 +232,7 @@ class WhatsAppService
             $url = "{$this->baseUrl}/{$this->phoneNumberId}/messages";
             
             // Determine language code based on template name
-            $languageCode = $templateName === 'guest_wedding_invitation' ? 'en' : 'en';
+            $languageCode = $templateName === 'guest_wedding_invitation' ? 'sw' : 'en';
             
             $payload = [
                 'messaging_product' => 'whatsapp',
@@ -307,7 +307,7 @@ class WhatsAppService
             $url = "{$this->baseUrl}/{$this->phoneNumberId}/messages";
             
             // Determine language code based on template name
-            $languageCode = $templateName === 'guest_wedding_invitation' ? 'en' : 'en';
+            $languageCode = $templateName === 'guest_wedding_invitation' ? 'sw' : 'en';
             
             $payload = [
                 'messaging_product' => 'whatsapp',

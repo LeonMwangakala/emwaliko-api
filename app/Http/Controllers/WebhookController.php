@@ -319,18 +319,19 @@ class WebhookController extends Controller
                     'type' => 'body',
                     'parameters' => [
                         ['type' => 'text', 'text' => $guest->name], // 1. Guest Name
-                        ['type' => 'text', 'text' => $event->event_name], // 2. Event Names
+                        ['type' => 'text', 'text' => $event->event_name], // 2. Event Name
                         ['type' => 'text', 'text' => $eventDate ? $eventDate->format('d/m/Y') : 'TBD'], // 3. Event Date
                         ['type' => 'text', 'text' => $eventDate ? $eventDate->format('H:i') : 'TBD'], // 4. Event Time
                         ['type' => 'text', 'text' => $event->event_location ?? 'TBD'], // 5. Location Name
-                        ['type' => 'text', 'text' => $guest->invite_code ?? 'KRGC123456'] // 6. Invite Code
+                        ['type' => 'text', 'text' => $guest->invite_code ?? 'KRGC123456'], // 6. Invite Code
+                        ['type' => 'text', 'text' => $guest->cardClass->name ?? 'VIP'] // 7. Card Class
                     ]
                 ]
             ];
 
             $result = $whatsappService->sendInteractiveTemplateMessage(
                 $validated['phone'],
-                'wedding_invitation_interactive',
+                'guest_wedding_invitation',
                 $parameters
             );
 
