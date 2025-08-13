@@ -132,11 +132,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/picture', [ProfileController::class, 'updateProfilePicture']);
     Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
     
-    // Location routes
-    Route::get('/countries', [LocationController::class, 'getCountries']);
-    Route::get('/regions/{countryId}', [LocationController::class, 'getRegions']);
-    Route::get('/districts/{regionId}', [LocationController::class, 'getDistricts']);
-    Route::get('/locations', [LocationController::class, 'getAllLocations']);
+
     
     // Scanner users route
     Route::get('/users/scanners', [AuthController::class, 'getScannerUsers']);
