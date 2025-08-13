@@ -43,9 +43,9 @@ class GuestCardService
             $originalHeight = $image->height();
 
             // For WhatsApp compatibility, use a fixed size that works well
-            // WhatsApp header images work best with 16:9 aspect ratio
-            $targetWidth = 1200;
-            $targetHeight = 675; // 16:9 aspect ratio
+            // Card dimensions optimized for WhatsApp display
+            $targetWidth = 750;
+            $targetHeight = 1050;
 
             // Resize the card to fit WhatsApp requirements
             $image->resize($targetWidth, $targetHeight, function ($constraint) {
@@ -79,7 +79,7 @@ class GuestCardService
             if ($cardType->show_qr_code) {
                 $qrCodeImage = $this->getQrCodeImage($guest, $manager, $scale);
                 if ($qrCodeImage) {
-                    $qrSize = (int)(150 * $scale); // Scale QR size proportionally, max 150px
+                    $qrSize = (int)(100 * $scale); // Smaller QR size, max 100px
                     $qrX = (int)($cardType->qr_position_x * $scaleX - $qrSize/2);
                     $qrY = (int)($cardType->qr_position_y * $scaleY - $qrSize/2);
                     
