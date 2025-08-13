@@ -71,7 +71,7 @@ class GuestCardService
                     (int)($cardType->name_position_x * $scaleX),
                     (int)($cardType->name_position_y * $scaleY),
                     $fontSize,
-                    '#000000'
+                    '#FFFFFF'
                 );
             }
 
@@ -96,7 +96,7 @@ class GuestCardService
                     (int)($cardType->card_class_position_x * $scaleX),
                     (int)($cardType->card_class_position_y * $scaleY),
                     $fontSize,
-                    '#333333'
+                    '#FFFFFF'
                 );
             }
 
@@ -160,7 +160,7 @@ class GuestCardService
         // Add text shadow effect for better visibility
         $image->text($text, $x + 1, $y + 1, function ($font) use ($fontSize) {
             $font->size($fontSize);
-            $font->color('#000000');
+            $font->color('#FFFFFF');
             $font->align('center');
             $font->valign('middle');
         });
