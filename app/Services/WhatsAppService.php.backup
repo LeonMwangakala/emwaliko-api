@@ -14,7 +14,6 @@ class WhatsAppService
     private $accessToken;
     private $phoneNumberId;
     private $webhookVerifyToken;
-    private $appSecret;
 
     public function __construct()
     {
@@ -22,7 +21,6 @@ class WhatsAppService
         $this->accessToken = config('services.whatsapp.access_token');
         $this->phoneNumberId = config('services.whatsapp.phone_number_id');
         $this->webhookVerifyToken = config('services.whatsapp.webhook_verify_token');
-        $this->appSecret = config('services.whatsapp.app_secret');
     }
 
     public function getPhoneNumberId(): string
@@ -380,7 +378,7 @@ class WhatsAppService
 
     public function verifyWebhookSignature(string $signature, string $body): bool
     {
-        $expectedSignature = 'sha256=' . hash_hmac('sha256', $body, $this->appSecret);
+        $expectedSignature = 'sha256=' . hash_hmac('sha256', $body, $this->webhookVerifyToken);
         return hash_equals($expectedSignature, $signature);
     }
 
@@ -484,10 +482,6 @@ class WhatsAppService
         $messageId = $status['id'] ?? null;
         $statusValue = $status['status'] ?? null;
 
-        // Log detailed status information for debugging
-        if ($statusValue === "failed") {
-            Log::info("WhatsApp message failed - detailed status", $status);
-        }
         if (!$messageId || !$statusValue) {
             return ['type' => 'status', 'success' => false, 'error' => 'Missing required fields'];
         }

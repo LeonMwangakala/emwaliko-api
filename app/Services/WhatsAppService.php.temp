@@ -484,10 +484,6 @@ class WhatsAppService
         $messageId = $status['id'] ?? null;
         $statusValue = $status['status'] ?? null;
 
-        // Log detailed status information for debugging
-        if ($statusValue === "failed") {
-            Log::info("WhatsApp message failed - detailed status", $status);
-        }
         if (!$messageId || !$statusValue) {
             return ['type' => 'status', 'success' => false, 'error' => 'Missing required fields'];
         }
