@@ -64,7 +64,7 @@ class GuestCardService
 
             // Add guest name if enabled
             if ($cardType->show_guest_name) {
-                $fontSize = max(72, (int)(144 * $scale)); // Increased by 3x: minimum 72px, scale from 144px base
+                $fontSize = max(444, (int)(444 * $scale)); // Fixed size: 444px
                 
                 // Convert percentage positions to absolute pixels
                 $nameX = (int)(($cardType->name_position_x / 100) * $targetWidth);
