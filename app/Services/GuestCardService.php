@@ -96,7 +96,7 @@ class GuestCardService
 
             // Add card class if enabled
             if ($cardType->show_card_class && $cardClassName) {
-                $fontSize = max(54, (int)(108 * $scale)); // Increased by 3x: minimum 54px, scale from 108px base
+                $fontSize = max(344, (int)(344 * $scale)); // Fixed size: 344px
                 
                 // Convert percentage positions to absolute pixels
                 $classX = (int)(($cardType->card_class_position_x / 100) * $targetWidth);
