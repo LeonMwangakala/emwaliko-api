@@ -148,6 +148,11 @@ class Event extends Model
             return $this->attributes['google_maps_url'];
         }
 
+        // If the user explicitly set it to null/empty, return empty string
+        if (array_key_exists('google_maps_url', $this->attributes) && $this->attributes['google_maps_url'] === null) {
+            return '';
+        }
+
         // If we have coordinates, generate a Google Maps URL
         if (isset($this->attributes['latitude']) && isset($this->attributes['longitude']) && 
             $this->attributes['latitude'] && $this->attributes['longitude']) {

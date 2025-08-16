@@ -84,7 +84,7 @@ class EventController extends Controller
             'event_location' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
-            'google_maps_url' => 'nullable|url',
+            'google_maps_url' => 'nullable|string',
             'event_type_id' => 'nullable|exists:event_types,id',
             'customer_id' => 'nullable|exists:customers,id',
             'card_type_id' => 'nullable|exists:card_types,id',
@@ -122,7 +122,7 @@ class EventController extends Controller
             'event_location' => $validated['event_location'] ?? '',
             'latitude' => $validated['latitude'] ?? null,
             'longitude' => $validated['longitude'] ?? null,
-            'google_maps_url' => $validated['google_maps_url'] ?? null,
+            'google_maps_url' => $validated['google_maps_url'] && $validated['google_maps_url'] !== '' ? $validated['google_maps_url'] : null,
             'event_date' => $eventDateTime,
             'notification_date' => $notificationDateTime,
             'customer_id' => $validated['customer_id'] ?? 1, // Default to first customer if not provided
@@ -200,7 +200,7 @@ class EventController extends Controller
             'event_location' => 'sometimes|required|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
-            'google_maps_url' => 'nullable|url',
+            'google_maps_url' => 'nullable|string',
             'event_date' => 'sometimes|required|date',
             'event_time' => ['sometimes', 'required', 'string', 'regex:/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/'],
             'notification_date' => 'nullable|date',
@@ -237,6 +237,17 @@ class EventController extends Controller
         $updateData = array_filter($validated, function($key) {
             return !in_array($key, ['event_time', 'notification_time']);
         }, ARRAY_FILTER_USE_KEY);
+
+        // Handle empty strings for optional fields
+        if (isset($updateData['google_maps_url']) && $updateData['google_maps_url'] === '') {
+            $updateData['google_maps_url'] = null;
+        }
+        if (isset($updateData['latitude']) && $updateData['latitude'] === '') {
+            $updateData['latitude'] = null;
+        }
+        if (isset($updateData['longitude']) && $updateData['longitude'] === '') {
+            $updateData['longitude'] = null;
+        }
 
         $event->update($updateData);
 
