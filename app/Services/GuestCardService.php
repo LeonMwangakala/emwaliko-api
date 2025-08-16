@@ -137,10 +137,9 @@ class GuestCardService
                         $qrX = max(0, min($qrX, $maxX));
                         $qrY = max(0, min($qrY, $maxY));
                         
-                        // Test: Force QR code to right side for debugging
-                        if ($event->qr_position_x > 50) {
-                            $qrX = $targetWidth - $qrSize - 20; // 20px from right edge
-                        }
+                        // Test: Force QR code to center for debugging
+                        $qrX = ($targetWidth - $qrSize) / 2; // Center horizontally
+                        $qrY = ($targetHeight - $qrSize) / 2; // Center vertically
                         
                         Log::info("QR code positioning", [
                             "event_qr_x" => $event->qr_position_x,
