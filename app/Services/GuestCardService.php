@@ -130,6 +130,16 @@ class GuestCardService
                         $qrX = $qrX - ($qrSize / 2);
                         $qrY = $qrY - ($qrSize / 2);
                         
+                        Log::info("QR code positioning", [
+                            "event_qr_x" => $event->qr_position_x,
+                            "event_qr_y" => $event->qr_position_y,
+                            "calculated_x" => $qrX,
+                            "calculated_y" => $qrY,
+                            "qr_size" => $qrSize,
+                            "target_width" => $targetWidth,
+                            "target_height" => $targetHeight
+                        ]);
+                        
                         // Place QR as the final layer
                         $image->place($qrImage, $qrX, $qrY);
                     }
