@@ -126,11 +126,17 @@ class GuestCardService
                         $qrX = (int)((($event->qr_position_x ?? 80) / 100) * $targetWidth);
                         $qrY = (int)((($event->qr_position_y ?? 70) / 100) * $targetHeight);
                         
-                        // For debugging, let's try placing at exact coordinates without centering
-                        // $qrX = $qrX - ($qrSize / 2);
-                        // $qrY = $qrY - ($qrSize / 2);
+                        // Ensure QR code stays fully within image bounds BEFORE centering
+                        $maxX = $targetWidth - $qrSize;
+                        $maxY = $targetHeight - $qrSize;
+                        $qrX = max(0, min($qrX, $maxX));
+                        $qrY = max(0, min($qrY, $maxY));
                         
-                        // Ensure QR code stays within image bounds
+                        // Center the QR code at the adjusted position
+                        $qrX = $qrX - ($qrSize / 2);
+                        $qrY = $qrY - ($qrSize / 2);
+                        
+                        // Final bounds check to ensure QR code is fully visible
                         $qrX = max(0, min($qrX, $targetWidth - $qrSize));
                         $qrY = max(0, min($qrY, $targetHeight - $qrSize));
                         
