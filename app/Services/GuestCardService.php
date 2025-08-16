@@ -126,6 +126,10 @@ class GuestCardService
                         $qrX = (int)((($event->qr_position_x ?? 80) / 100) * $targetWidth);
                         $qrY = (int)((($event->qr_position_y ?? 70) / 100) * $targetHeight);
                         
+                        // Center the QR code at the specified position
+                        $qrX = $qrX - ($qrSize / 2);
+                        $qrY = $qrY - ($qrSize / 2);
+                        
                         // Place QR as the final layer
                         $image->place($qrImage, $qrX, $qrY);
                     }
