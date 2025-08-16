@@ -64,11 +64,13 @@ class GuestCardService
 
             // Add guest name if enabled
             if ($cardType->show_guest_name) {
-                $fontSize = (int)(28 * $scale); // Fixed size: 28px
+                // Use event-specific text size and color, fallback to defaults
+                $fontSize = (int)(($event->name_text_size ?? 98) * $scale / 3.5); // Scale down for the service
+                $textColor = $event->name_text_color ?? '#000000';
                 
-                // Convert percentage positions to absolute pixels
-                $nameX = (int)(($cardType->name_position_x / 100) * $targetWidth);
-                $nameY = (int)(($cardType->name_position_y / 100) * $targetHeight);
+                // Use event-specific positions, fallback to defaults
+                $nameX = (int)((($event->name_position_x ?? 50) / 100) * $targetWidth);
+                $nameY = (int)((($event->name_position_y ?? 30) / 100) * $targetHeight);
                 
                 $this->addTextToImage(
                     $image,
@@ -76,18 +78,20 @@ class GuestCardService
                     $nameX,
                     $nameY,
                     $fontSize,
-                    '#FFFFFF'
+                    $textColor
                 );
             }
 
 
             // Add card class if enabled
             if ($cardType->show_card_class && $cardClassName) {
-                $fontSize = (int)(20 * $scale); // Fixed size: 20px (much smaller)
+                // Use event-specific text size and color, fallback to defaults
+                $fontSize = (int)(($event->card_class_text_size ?? 60) * $scale / 3.5); // Scale down for the service
+                $textColor = $event->card_class_text_color ?? '#333333';
                 
-                // Convert percentage positions to absolute pixels
-                $classX = (int)(($cardType->card_class_position_x / 100) * $targetWidth);
-                $classY = (int)(($cardType->card_class_position_y / 100) * $targetHeight);
+                // Use event-specific positions, fallback to defaults
+                $classX = (int)((($event->card_class_position_x ?? 20) / 100) * $targetWidth);
+                $classY = (int)((($event->card_class_position_y ?? 90) / 100) * $targetHeight);
                 
                 $this->addTextToImage(
                     $image,
@@ -95,19 +99,17 @@ class GuestCardService
                     $classX,
                     $classY,
                     $fontSize,
-                    '#FFFFFF'
+                    $textColor
                 );
             }
 
-            // Add QR code as TOP LAYER - after all other elements
+            // Add QR code if enabled
             if ($cardType->show_qr_code) {
                 try {
                     $qrSize = 150; // Reduced size for better proportion
                     
                     // Generate QR code
                     $qrContent = $guest->invite_code;
-                    Log::info("QR Content Generated (Top Layer)", ["content" => $qrContent]);
-                    
                     $qrCode = QrCode::format('png')
                         ->size($qrSize)
                         ->margin(3)
@@ -116,24 +118,19 @@ class GuestCardService
                     // Convert to base64 data URI
                     $qrBase64 = base64_encode($qrCode);
                     $qrDataUri = "data:image/png;base64," . $qrBase64;
-                    Log::info("QR base64 created (Top Layer)", ["length" => strlen($qrBase64)]);
                     
                     $qrImage = $manager->read($qrDataUri);
                     
                     if ($qrImage) {
-                        // Back to working top-left position
-                        $qrX = 50; // Back to top-left where it was working
-                        $qrY = 50; // Back to top-left where it was working
-                        
-                        Log::info("Placing QR on TOP LAYER", ["qrX" => $qrX, "qrY" => $qrY, "qrSize" => $qrSize]);
+                        // Use event-specific QR positions, fallback to defaults
+                        $qrX = (int)((($event->qr_position_x ?? 80) / 100) * $targetWidth);
+                        $qrY = (int)((($event->qr_position_y ?? 70) / 100) * $targetHeight);
                         
                         // Place QR as the final layer
                         $image->place($qrImage, $qrX, $qrY);
-                        
-                        Log::info("QR placed successfully on top layer");
                     }
                 } catch (\Exception $e) {
-                    Log::error("QR Top Layer failed", ["error" => $e->getMessage()]);
+                    Log::error("QR code generation failed", ["error" => $e->getMessage()]);
                 }
             }
             
@@ -163,37 +160,7 @@ class GuestCardService
         }
     }
 
-    private function getQrCodeImage(Guest $guest, ImageManager $manager, float $scale): ?\Intervention\Image\Image
-    {
-        try {
-            if ($guest->qr_code_path) {
-                $qrPath = storage_path('app/public/' . $guest->qr_code_path);
-                if (file_exists($qrPath)) {
-                    $qrSize = (int)(200 * $scale); // Compact QR size
-                    return $manager->read($qrPath)->resize($qrSize, $qrSize);
-                }
-            }
 
-            // Generate QR code if not exists
-            $qrSize = (int)(200 * $scale); // Compact QR size
-            $qrCode = QrCode::format('png')
-                ->size($qrSize)
-                ->margin(10) // Larger white margin for better visibility
-                ->backgroundColor(255, 255, 255) // White background for better contrast
-                ->color(0, 0, 0) // Black QR code for maximum contrast
-                ->errorCorrection('H') // High error correction for better scanning
-                ->generate(route('guest.rsvp', $guest->invite_code));
-
-            return $manager->read($qrCode);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to get QR code image', [
-                'guest_id' => $guest->id,
-                'error' => $e->getMessage()
-            ]);
-            return null;
-        }
-    }
 
     private function addTextToImage($image, string $text, int $x, int $y, int $fontSize, string $color): void
     {

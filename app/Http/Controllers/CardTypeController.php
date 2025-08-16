@@ -25,14 +25,9 @@ class CardTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:card_types,name',
             'status' => 'in:Active,Inactive',
-            'name_position_x' => 'nullable|numeric|min:0|max:100',
-            'name_position_y' => 'nullable|numeric|min:0|max:100',
-            'qr_position_x' => 'nullable|numeric|min:0|max:100',
-            'qr_position_y' => 'nullable|numeric|min:0|max:100',
-            'card_class_position_x' => 'nullable|numeric|min:0|max:100',
-            'card_class_position_y' => 'nullable|numeric|min:0|max:100',
             'show_card_class' => 'boolean',
             'show_guest_name' => 'boolean',
+            'show_qr_code' => 'boolean',
         ]);
         $cardType = CardType::create(array_merge(['status' => 'Active'], $validated));
         return response()->json($cardType, 201);
@@ -46,14 +41,9 @@ class CardTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:card_types,name,' . $cardType->id,
             'status' => 'in:Active,Inactive',
-            'name_position_x' => 'nullable|numeric|min:0|max:100',
-            'name_position_y' => 'nullable|numeric|min:0|max:100',
-            'qr_position_x' => 'nullable|numeric|min:0|max:100',
-            'qr_position_y' => 'nullable|numeric|min:0|max:100',
-            'card_class_position_x' => 'nullable|numeric|min:0|max:100',
-            'card_class_position_y' => 'nullable|numeric|min:0|max:100',
             'show_card_class' => 'boolean',
             'show_guest_name' => 'boolean',
+            'show_qr_code' => 'boolean',
         ]);
         $cardType->update($validated);
         return response()->json($cardType);

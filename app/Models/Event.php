@@ -41,6 +41,16 @@ class Event extends Model
         'event_date',
         'notification_date',
         'card_design_path',
+        'name_position_x',
+        'name_position_y',
+        'qr_position_x',
+        'qr_position_y',
+        'card_class_position_x',
+        'card_class_position_y',
+        'name_text_color',
+        'card_class_text_color',
+        'name_text_size',
+        'card_class_text_size',
         'country_id',
         'region_id',
         'district_id',
@@ -50,7 +60,13 @@ class Event extends Model
 
     protected $casts = [
         'event_date' => 'datetime',
-        'notification_date' => 'datetime'
+        'notification_date' => 'datetime',
+        'name_position_x' => 'decimal:2',
+        'name_position_y' => 'decimal:2',
+        'qr_position_x' => 'decimal:2',
+        'qr_position_y' => 'decimal:2',
+        'card_class_position_x' => 'decimal:2',
+        'card_class_position_y' => 'decimal:2',
     ];
 
     public function customer(): BelongsTo
