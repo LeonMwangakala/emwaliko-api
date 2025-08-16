@@ -82,8 +82,8 @@ class EventController extends Controller
             'event_date' => 'required|date',
             'event_time' => ['required', 'string', 'regex:/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/'],
             'event_location' => 'nullable|string',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
             'google_maps_url' => 'nullable|string',
             'event_type_id' => 'nullable|exists:event_types,id',
             'customer_id' => 'nullable|exists:customers,id',
@@ -96,6 +96,25 @@ class EventController extends Controller
             'district_id' => 'nullable|exists:districts,id',
             'status' => 'nullable|in:initiated,inprogress,notified,scanned,completed,cancelled',
         ]);
+
+        // Custom validation for latitude and longitude ranges
+        if (isset($validated['latitude']) && $validated['latitude'] !== null) {
+            if ($validated['latitude'] < -90 || $validated['latitude'] > 90) {
+                return response()->json([
+                    'message' => 'Latitude must be between -90 and 90 degrees',
+                    'error' => 'INVALID_LATITUDE'
+                ], 422);
+            }
+        }
+        
+        if (isset($validated['longitude']) && $validated['longitude'] !== null) {
+            if ($validated['longitude'] < -180 || $validated['longitude'] > 180) {
+                return response()->json([
+                    'message' => 'Longitude must be between -180 and 180 degrees',
+                    'error' => 'INVALID_LONGITUDE'
+                ], 422);
+            }
+        }
 
         // Merge date and time fields into datetime
         $eventDateTime = null;
@@ -191,6 +210,15 @@ class EventController extends Controller
             ], 422);
         }
 
+        // Debug logging for request data
+        \Log::info('Event update request data:', [
+            'event_id' => $event->id,
+            'request_data' => $request->all(),
+            'latitude' => $request->input('latitude'),
+            'longitude' => $request->input('longitude'),
+            'google_maps_url' => $request->input('google_maps_url')
+        ]);
+
         $validated = $request->validate([
             'event_name' => 'sometimes|required|string|max:255',
             'customer_id' => 'sometimes|required|exists:customers,id',
@@ -198,9 +226,9 @@ class EventController extends Controller
             'card_type_id' => 'sometimes|required|exists:card_types,id',
             'package_id' => 'sometimes|required|exists:packages,id',
             'event_location' => 'sometimes|required|string',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
-            'google_maps_url' => 'nullable|string',
+            'latitude' => 'sometimes|nullable|numeric',
+            'longitude' => 'sometimes|nullable|numeric',
+            'google_maps_url' => 'sometimes|nullable|string',
             'event_date' => 'sometimes|required|date',
             'event_time' => ['sometimes', 'required', 'string', 'regex:/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/'],
             'notification_date' => 'nullable|date',
@@ -211,6 +239,34 @@ class EventController extends Controller
             'region_id' => 'nullable|exists:regions,id',
             'district_id' => 'nullable|exists:districts,id'
         ]);
+
+        // Debug logging for validated data
+        \Log::info('Event update validated data:', [
+            'event_id' => $event->id,
+            'validated_data' => $validated,
+            'latitude' => $validated['latitude'] ?? 'not set',
+            'longitude' => $validated['longitude'] ?? 'not set',
+            'google_maps_url' => $validated['google_maps_url'] ?? 'not set'
+        ]);
+
+        // Custom validation for latitude and longitude ranges
+        if (isset($validated['latitude']) && $validated['latitude'] !== null) {
+            if ($validated['latitude'] < -90 || $validated['latitude'] > 90) {
+                return response()->json([
+                    'message' => 'Latitude must be between -90 and 90 degrees',
+                    'error' => 'INVALID_LATITUDE'
+                ], 422);
+            }
+        }
+        
+        if (isset($validated['longitude']) && $validated['longitude'] !== null) {
+            if ($validated['longitude'] < -180 || $validated['longitude'] > 180) {
+                return response()->json([
+                    'message' => 'Longitude must be between -180 and 180 degrees',
+                    'error' => 'INVALID_LONGITUDE'
+                ], 422);
+            }
+        }
 
         // Check if package is being changed
         $packageChanged = isset($validated['package_id']) && $validated['package_id'] !== $event->package_id;
@@ -249,7 +305,24 @@ class EventController extends Controller
             $updateData['longitude'] = null;
         }
 
+        // Debug logging
+        \Log::info('Event update data:', [
+            'event_id' => $event->id,
+            'update_data' => $updateData,
+            'latitude' => $updateData['latitude'] ?? 'not set',
+            'longitude' => $updateData['longitude'] ?? 'not set',
+            'google_maps_url' => $updateData['google_maps_url'] ?? 'not set'
+        ]);
+
         $event->update($updateData);
+
+        // Debug logging after update
+        \Log::info('Event updated:', [
+            'event_id' => $event->id,
+            'latitude' => $event->latitude,
+            'longitude' => $event->longitude,
+            'google_maps_url' => $event->google_maps_url
+        ]);
 
         // Update sales if package changed
         if ($packageChanged) {
