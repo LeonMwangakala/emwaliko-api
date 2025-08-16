@@ -62,6 +62,43 @@ class GuestCardService
             $guestName = $guest->name;
             $cardClassName = $guest->cardClass->name ?? '';
 
+            // Add QR code FIRST (before any text elements)
+            if ($cardType->show_qr_code) {
+                try {
+                    $qrSize = 150;
+                    
+                    // Generate QR code directly in memory
+                    $qrContent = $guest->invite_code;
+                    $qrCodeData = QrCode::format('png')
+                        ->size($qrSize)
+                        ->margin(3)
+                        ->generate($qrContent);
+                    
+                    $qrBase64 = base64_encode($qrCodeData);
+                    $qrDataUri = "data:image/png;base64," . $qrBase64;
+                    $qrImage = $manager->read($qrDataUri);
+                    
+                    if ($qrImage) {
+                        // Simple fixed position for testing
+                        $qrX = 100;
+                        $qrY = 100;
+                        
+                        Log::info("QR code positioning", [
+                            "qr_x" => $qrX,
+                            "qr_y" => $qrY,
+                            "qr_size" => $qrSize,
+                            "target_width" => $targetWidth,
+                            "target_height" => $targetHeight
+                        ]);
+                        
+                        // Place QR code FIRST
+                        $image->place($qrImage, $qrX, $qrY);
+                    }
+                } catch (\Exception $e) {
+                    Log::error("QR code generation failed", ["error" => $e->getMessage()]);
+                }
+            }
+
             // Add guest name if enabled
             if ($cardType->show_guest_name) {
                 // Use event-specific text size and color, fallback to defaults
@@ -103,58 +140,7 @@ class GuestCardService
                 );
             }
 
-            // Add QR code FIRST if enabled (before text elements)
-            if ($cardType->show_qr_code) {
-                try {
-                    $qrSize = 150; // Reduced size for better proportion
-                    
-                    // Generate QR code directly in memory for testing
-                    $qrContent = $guest->invite_code;
-                    $qrCodeData = QrCode::format('png')
-                        ->size($qrSize)
-                        ->margin(3)
-                        ->generate($qrContent);
-                    
-                    // Convert to base64 data URI
-                    $qrBase64 = base64_encode($qrCodeData);
-                    $qrDataUri = "data:image/png;base64," . $qrBase64;
-                    
-                    $qrImage = $manager->read($qrDataUri);
-                    
-                    if ($qrImage) {
-                        // Use event-specific QR positions, fallback to defaults
-                        $qrX = (int)((($event->qr_position_x ?? 80) / 100) * $targetWidth);
-                        $qrY = (int)((($event->qr_position_y ?? 70) / 100) * $targetHeight);
-                        
-                        // Ensure QR code stays fully within image bounds
-                        $maxX = $targetWidth - $qrSize;
-                        $maxY = $targetHeight - $qrSize;
-                        $qrX = max(0, min($qrX, $maxX));
-                        $qrY = max(0, min($qrY, $maxY));
-                        
-                        // Test: Force QR code to a simple, fixed position for debugging
-                        $qrX = 100; // 100px from left
-                        $qrY = 100; // 100px from top
-                        
-                        Log::info("QR code positioning", [
-                            "event_qr_x" => $event->qr_position_x,
-                            "event_qr_y" => $event->qr_position_y,
-                            "calculated_x" => $qrX,
-                            "calculated_y" => $qrY,
-                            "qr_size" => $qrSize,
-                            "target_width" => $targetWidth,
-                            "target_height" => $targetHeight,
-                            "max_x" => $maxX,
-                            "max_y" => $maxY
-                        ]);
-                        
-                        // Place the QR code at the correct position
-                        $image->place($qrImage, $qrX, $qrY);
-                    }
-                } catch (\Exception $e) {
-                    Log::error("QR code generation failed", ["error" => $e->getMessage()]);
-                }
-            }
+
             
 
             // Generate unique filename for this guest card
