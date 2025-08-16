@@ -103,7 +103,7 @@ class GuestCardService
                 );
             }
 
-            // Add QR code if enabled
+            // Add QR code FIRST if enabled (before text elements)
             if ($cardType->show_qr_code) {
                 try {
                     $qrSize = 150; // Reduced size for better proportion
@@ -154,7 +154,12 @@ class GuestCardService
                             "max_y" => $maxY
                         ]);
                         
-                        // Place QR as the final layer
+                        // Test positioning with a simple rectangle first
+                        $image->rectangle($qrX, $qrY, $qrX + $qrSize, $qrY + $qrSize, function ($draw) {
+                            $draw->background('#FF0000'); // Red rectangle
+                        });
+                        
+                        // Then place the QR code
                         $image->place($qrImage, $qrX, $qrY);
                     }
                 } catch (\Exception $e) {
