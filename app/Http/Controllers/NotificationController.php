@@ -26,9 +26,14 @@ class NotificationController extends Controller
         $validated = $request->validate([
             'guest_id' => 'required|exists:guests,id',
             'message' => 'required|string',
-            'notification_type' => 'required|in:SMS,WhatsApp',
+            'notification_type' => 'required|in:SMS,WhatsApp,WHATSAPP',
             'status' => 'in:Sent,Not Sent',
         ]);
+
+        // Normalize notification type
+        if (strtoupper($validated['notification_type']) === 'WHATSAPP') {
+            $validated['notification_type'] = 'WhatsApp';
+        }
 
         $notification = Notification::create($validated);
 
@@ -45,9 +50,14 @@ class NotificationController extends Controller
     {
         $validated = $request->validate([
             'message' => 'sometimes|required|string',
-            'notification_type' => 'sometimes|required|in:SMS,WhatsApp',
+            'notification_type' => 'sometimes|required|in:SMS,WhatsApp,WHATSAPP',
             'status' => 'sometimes|in:Sent,Not Sent',
         ]);
+
+        // Normalize notification type if present
+        if (isset($validated['notification_type']) && strtoupper($validated['notification_type']) === 'WHATSAPP') {
+            $validated['notification_type'] = 'WhatsApp';
+        }
 
         $notification->update($validated);
 
@@ -111,10 +121,14 @@ class NotificationController extends Controller
     public function getAvailableGuestsForNotificationType(Request $request, Event $event): JsonResponse
     {
         $validated = $request->validate([
-            'notification_type' => 'required|in:SMS,WhatsApp'
+            'notification_type' => 'required|in:SMS,WhatsApp,WHATSAPP'
         ]);
 
+        // Normalize notification type to handle both WhatsApp and WHATSAPP
         $notificationType = $validated['notification_type'];
+        if (strtoupper($notificationType) === 'WHATSAPP') {
+            $notificationType = 'WhatsApp';
+        }
 
         // Get all guests for this event
         $allGuests = $event->guests()->get();
@@ -128,14 +142,28 @@ class NotificationController extends Controller
         ->toArray();
 
         // Filter out guests who already have this notification type
-        $availableGuests = $allGuests->filter(function ($guest) use ($existingGuestIds) {
+        $availableGuests = $allGuests->filter(function ($guest) use ($existingGuestIds, $notificationType) {
+            // For WhatsApp, only include guests who have cards generated
+            if ($notificationType === 'WhatsApp' && !$guest->guest_card_path) {
+                return false;
+            }
+            
             return !in_array($guest->id, $existingGuestIds);
         })->values();
+
+        // Count guests filtered out due to missing cards (for WhatsApp only)
+        $guestsWithoutCards = 0;
+        if ($notificationType === 'WhatsApp') {
+            $guestsWithoutCards = $allGuests->filter(function ($guest) {
+                return !$guest->guest_card_path;
+            })->count();
+        }
 
         return response()->json([
             'available_guests' => $availableGuests,
             'total_guests' => $allGuests->count(),
             'filtered_out_count' => count($existingGuestIds),
+            'guests_without_cards' => $guestsWithoutCards,
             'notification_type' => $notificationType
         ]);
     }
@@ -144,10 +172,15 @@ class NotificationController extends Controller
     {
         $validated = $request->validate([
             'message' => 'required|string',
-            'notification_type' => 'required|in:SMS,WhatsApp',
+            'notification_type' => 'required|in:SMS,WhatsApp,WHATSAPP',
             'guest_ids' => 'array',
             'guest_ids.*' => 'exists:guests,id'
         ]);
+
+        // Normalize notification type to handle both WhatsApp and WHATSAPP
+        if (strtoupper($validated['notification_type']) === 'WHATSAPP') {
+            $validated['notification_type'] = 'WhatsApp';
+        }
 
         $guests = $event->guests();
         
@@ -161,6 +194,16 @@ class NotificationController extends Controller
         $phoneToNotificationId = [];
 
         foreach ($guests as $guest) {
+            // For WhatsApp notifications, only include guests who have cards generated
+            if ($validated['notification_type'] === 'WhatsApp' && !$guest->guest_card_path) {
+                \Log::info('Skipping WhatsApp notification creation - guest has no card generated', [
+                    'guest_id' => $guest->id,
+                    'guest_name' => $guest->name,
+                    'phone' => $guest->phone_number
+                ]);
+                continue;
+            }
+
             // Replace template variables with actual guest details
             $personalizedMessage = $this->replaceTemplateVariables($validated['message'], $guest, $event);
             
@@ -237,10 +280,20 @@ class NotificationController extends Controller
             // Send interactive template messages
             foreach ($guests as $guest) {
                 if ($guest->phone_number) {
+                    // Only send WhatsApp notifications to guests who have a card generated
+                    if (!$guest->guest_card_path) {
+                        \Log::info('Skipping WhatsApp notification - guest has no card generated', [
+                            'guest_id' => $guest->id,
+                            'guest_name' => $guest->name,
+                            'phone' => $guest->phone_number
+                        ]);
+                        continue;
+                    }
+
                     try {
                         $eventDate = $event->event_date ? \Carbon\Carbon::parse($event->event_date) : null;
                         
-                        // Generate personalized guest card as public URL
+                        // Get the existing guest card URL (no need to generate new one)
                         $guestCardUrl = $guestCardService->generateGuestCard($guest, $event);
                         
                         // Generate Google Maps URL for the event
@@ -353,9 +406,24 @@ class NotificationController extends Controller
         
         // Update event status
         EventStatusService::updateEventStatus($event);
+        
+        // Count guests filtered out due to missing cards (for WhatsApp only)
+        $guestsWithoutCards = 0;
+        if ($validated['notification_type'] === 'WhatsApp') {
+            $guestsWithoutCards = $guests->filter(function ($guest) {
+                return !$guest->guest_card_path;
+            })->count();
+        }
+        
+        $message = count($notifications) . ' notifications created and ' . $validated['notification_type'] . ' sent';
+        if ($validated['notification_type'] === 'WhatsApp' && $guestsWithoutCards > 0) {
+            $message .= ' (' . $guestsWithoutCards . ' guests skipped - no cards generated)';
+        }
+        
         return response()->json([
-            'message' => count($notifications) . ' notifications created and ' . $validated['notification_type'] . ' sent',
-            'notifications' => $notifications
+            'message' => $message,
+            'notifications' => $notifications,
+            'guests_without_cards' => $guestsWithoutCards
         ], 201);
     }
 

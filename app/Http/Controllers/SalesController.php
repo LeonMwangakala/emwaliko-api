@@ -6,6 +6,7 @@ use App\Models\Event;
 use App\Models\Sales;
 use App\Services\SalesService;
 use App\Services\EventStatusService;
+use App\Services\GuestCardCleanupService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -141,10 +142,14 @@ class SalesController extends Controller
     public function canMarkAsCompleted(Event $event): JsonResponse
     {
         $canComplete = SalesService::canMarkEventAsCompleted($event);
+        
+        // Get cleanup statistics
+        $cleanupStats = GuestCardCleanupService::getEventCleanupStats($event);
 
         return response()->json([
             'can_complete' => $canComplete,
-            'reason' => $canComplete ? 'Event can be completed' : 'Event must be invoiced before completion'
+            'reason' => $canComplete ? 'Event can be completed' : 'Event must be invoiced before completion',
+            'cleanup_stats' => $cleanupStats
         ]);
     }
 
@@ -163,9 +168,13 @@ class SalesController extends Controller
         $success = EventStatusService::markEventAsCompleted($event);
 
         if ($success) {
+            // Get cleanup statistics after completion
+            $cleanupStats = GuestCardCleanupService::getEventCleanupStats($event);
+            
             return response()->json([
-                'message' => 'Event marked as completed successfully',
-                'event' => $event->load(['customer', 'eventType', 'cardType', 'package'])
+                'message' => 'Event marked as completed successfully. Guest cards have been cleaned up.',
+                'event' => $event->load(['customer', 'eventType', 'cardType', 'package']),
+                'cleanup_stats' => $cleanupStats
             ]);
         }
 

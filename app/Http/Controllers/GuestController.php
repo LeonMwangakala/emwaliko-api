@@ -373,8 +373,18 @@ class GuestController extends Controller
 
             // Decode base64 image data
             $imageData = $request->canvas_image;
+            $extension = 'jpg'; // Default extension
+            
+            // Check the format and set appropriate extension
             if (strpos($imageData, 'data:image/png;base64,') === 0) {
                 $imageData = substr($imageData, 22); // Remove data URI prefix
+                $extension = 'png';
+            } elseif (strpos($imageData, 'data:image/jpeg;base64,') === 0) {
+                $imageData = substr($imageData, 23); // Remove data URI prefix
+                $extension = 'jpg';
+            } elseif (strpos($imageData, 'data:image/jpg;base64,') === 0) {
+                $imageData = substr($imageData, 22); // Remove data URI prefix
+                $extension = 'jpg';
             }
 
             $imageData = base64_decode($imageData);
@@ -382,8 +392,8 @@ class GuestController extends Controller
                 throw new \Exception('Invalid base64 image data');
             }
 
-            // Generate unique filename
-            $filename = 'guest_cards/' . $guest->invite_code . '_' . time() . '.png';
+            // Generate unique filename with correct extension
+            $filename = 'guest_cards/' . $guest->invite_code . '_' . time() . '.' . $extension;
             $fullPath = storage_path('app/public/' . $filename);
 
             // Ensure directory exists
@@ -394,6 +404,9 @@ class GuestController extends Controller
 
             // Save the canvas-generated image
             file_put_contents($fullPath, $imageData);
+
+            // Save the card path to the guest record
+            $guest->update(['guest_card_path' => $filename]);
 
             // Return the public URL
             $publicUrl = url('storage/' . $filename);
@@ -419,6 +432,86 @@ class GuestController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to generate guest card: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function generateAllMissingCards(Event $event): JsonResponse
+    {
+        try {
+            $guestsWithoutCards = $event->guests()
+                ->whereNull('guest_card_path')
+                ->orWhere('guest_card_path', '')
+                ->get();
+            
+            $totalGuests = $guestsWithoutCards->count();
+            
+            // For now, just return a test response
+            return response()->json([
+                'message' => "Found {$totalGuests} guests without cards",
+                'total_guests' => $totalGuests,
+                'success_count' => 0,
+                'failed_count' => 0,
+                'generated_cards' => []
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to generate guest cards',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteGuestCard(Guest $guest): JsonResponse
+    {
+        try {
+            if ($guest->guest_card_path) {
+                // Delete the file from storage
+                $fullPath = storage_path('app/public/' . $guest->guest_card_path);
+                if (file_exists($fullPath)) {
+                    unlink($fullPath);
+                }
+                
+                // Also try to delete with different extensions in case of mixed formats
+                $pathInfo = pathinfo($fullPath);
+                $possibleExtensions = ['png', 'jpg', 'jpeg'];
+                foreach ($possibleExtensions as $ext) {
+                    $altPath = $pathInfo['dirname'] . '/' . $pathInfo['filename'] . '.' . $ext;
+                    if (file_exists($altPath) && $altPath !== $fullPath) {
+                        unlink($altPath);
+                    }
+                }
+                
+                // Clear the path from database
+                $guest->update(['guest_card_path' => null]);
+                
+                \Log::info('Guest card deleted', [
+                    'guest_id' => $guest->id,
+                    'guest_name' => $guest->name,
+                    'file_path' => $guest->guest_card_path
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Guest card deleted successfully'
+                ]);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'No card to delete'
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Failed to delete guest card', [
+                'guest_id' => $guest->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete guest card: ' . $e->getMessage()
             ], 500);
         }
     }

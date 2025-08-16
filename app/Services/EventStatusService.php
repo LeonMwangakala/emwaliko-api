@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Event;
 use Carbon\Carbon;
+use App\Services\GuestCardCleanupService;
 
 class EventStatusService
 {
@@ -85,6 +86,25 @@ class EventStatusService
     {
         if (SalesService::canMarkEventAsCompleted($event)) {
             $event->update(['status' => 'completed']);
+            
+            // Clean up guest cards when event is completed
+            try {
+                $cleanupResults = GuestCardCleanupService::cleanupEventGuestCards($event);
+                
+                \Log::info('Guest cards cleaned up after event completion', [
+                    'event_id' => $event->id,
+                    'event_name' => $event->event_name,
+                    'cleanup_results' => $cleanupResults
+                ]);
+                
+            } catch (\Exception $e) {
+                \Log::error('Failed to clean up guest cards after event completion', [
+                    'event_id' => $event->id,
+                    'error' => $e->getMessage()
+                ]);
+                // Don't fail the completion if cleanup fails
+            }
+            
             return true;
         }
         

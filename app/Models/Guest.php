@@ -22,6 +22,7 @@ class Guest extends Model
         'card_class_id',
         'invite_code',
         'qr_code_path',
+        'guest_card_path',
         'rsvp_status'
     ];
 

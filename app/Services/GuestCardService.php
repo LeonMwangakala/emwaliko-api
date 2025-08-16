@@ -16,6 +16,23 @@ class GuestCardService
     public function generateGuestCard(Guest $guest, Event $event): string
     {
         try {
+            // First, check if the guest already has a card generated
+            if ($guest->guest_card_path) {
+                $existingCardPath = storage_path('app/public/' . $guest->guest_card_path);
+                if (file_exists($existingCardPath)) {
+                    Log::info('Using existing guest card', [
+                        'guest_id' => $guest->id,
+                        'card_path' => $guest->guest_card_path
+                    ]);
+                    return url('storage/' . $guest->guest_card_path);
+                } else {
+                    Log::warning('Guest card path exists but file not found, will generate new card', [
+                        'guest_id' => $guest->id,
+                        'card_path' => $guest->guest_card_path
+                    ]);
+                }
+            }
+
             // Get card type configuration
             $cardType = CardType::find($event->card_type_id);
             if (!$cardType) {
@@ -161,8 +178,20 @@ class GuestCardService
             // Save the generated card with compression
             $image->save($fullPath, 80); // 80% quality
 
+            // Save the card path to the guest record
+            $guest->update(['guest_card_path' => $filename]);
+
             // Return the public URL for WhatsApp
-            return url('storage/' . $filename);
+            $publicUrl = url('storage/' . $filename);
+
+            Log::info('Guest card generated and saved', [
+                'guest_id' => $guest->id,
+                'event_id' => $event->id,
+                'filename' => $filename,
+                'url' => $publicUrl
+            ]);
+
+            return $publicUrl;
 
         } catch (\Exception $e) {
             Log::error('Failed to generate guest card', [
@@ -200,6 +229,9 @@ class GuestCardService
             // Save the canvas-generated image
             file_put_contents($fullPath, $imageData);
 
+            // Save the card path to the guest record
+            $guest->update(['guest_card_path' => $filename]);
+
             // Return the public URL for WhatsApp
             $publicUrl = url('storage/' . $filename);
 
@@ -227,7 +259,6 @@ class GuestCardService
         // Add text shadow effect for better visibility
         $image->text($text, $x + 1, $y + 1, function ($font) use ($fontSize) {
             $font->size($fontSize);
-            $font->file("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf");
             $font->color('#FFFFFF');
             $font->align('center');
             $font->valign('middle');
@@ -236,7 +267,6 @@ class GuestCardService
         // Add main text
         $image->text($text, $x, $y, function ($font) use ($fontSize, $color) {
             $font->size($fontSize);
-            $font->file("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf");
             $font->color($color);
             $font->align('center');
             $font->valign('middle');

@@ -97,6 +97,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('guests', GuestController::class);
     Route::post('guests/{guest}/regenerate-qr-code', [GuestController::class, 'regenerateQrCode']);
     Route::post('guests/save-canvas-card', [GuestController::class, 'saveCanvasCard']);
+Route::post('events/{event}/guests/generate-all-cards', [GuestController::class, 'generateAllMissingCards']);
+Route::delete('guests/{guest}/card', [GuestController::class, 'deleteGuestCard']);
     
     // Notification routes
     Route::apiResource('notifications', NotificationController::class);
