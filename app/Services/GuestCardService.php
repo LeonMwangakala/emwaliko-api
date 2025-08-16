@@ -154,9 +154,12 @@ class GuestCardService
                             "max_y" => $maxY
                         ]);
                         
-                        // Test positioning with a simple rectangle first
-                        $image->rectangle($qrX, $qrY, $qrX + $qrSize, $qrY + $qrSize, function ($draw) {
-                            $draw->background('#FF0000'); // Red rectangle
+                        // Test positioning with a simple text marker
+                        $image->text('QR', $qrX, $qrY, function ($font) {
+                            $font->size(50);
+                            $font->color('#FF0000'); // Red text
+                            $font->align('left');
+                            $font->valign('top');
                         });
                         
                         // Then place the QR code
