@@ -74,6 +74,20 @@ class GuestCardService
                         ->margin(3)
                         ->generate($qrContent);
                     
+                    // Test: Add text at the same position first
+                    $targetWidth = $image->width();
+                    $targetHeight = $image->height();
+                    $qrX = (int)((($event->qr_position_x ?? 80) / 100) * $targetWidth);
+                    $qrY = (int)((($event->qr_position_y ?? 70) / 100) * $targetHeight);
+                    
+                    // Add test text
+                    $image->text('QR TEST', $qrX, $qrY, function ($font) {
+                        $font->size(50);
+                        $font->color('#FF0000'); // Red text
+                        $font->align('left');
+                        $font->valign('top');
+                    });
+                    
                     // Use canvas approach like frontend
                     $image = $this->addQrCodeToCanvas($image, $qrCodeData, $qrSize, $event, $manager);
                     
