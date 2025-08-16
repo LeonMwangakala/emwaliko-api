@@ -64,7 +64,7 @@ class GuestCardService
 
             // Add guest name if enabled
             if ($cardType->show_guest_name) {
-                $fontSize = max(444, (int)(444 * $scale)); // Fixed size: 444px
+                $fontSize = (int)(28 * $scale); // Fixed size: 28px
                 
                 // Convert percentage positions to absolute pixels
                 $nameX = (int)(($cardType->name_position_x / 100) * $targetWidth);
@@ -80,23 +80,10 @@ class GuestCardService
                 );
             }
 
-            // Add QR code if enabled
-            if ($cardType->show_qr_code) {
-                $qrCodeImage = $this->getQrCodeImage($guest, $manager, $scale);
-                if ($qrCodeImage) {
-                    $qrSize = (int)(150 * $scale); // Increased QR size for better visibility
-                    
-                    // Convert percentage positions to absolute pixels
-                    $qrX = (int)(($cardType->qr_position_x / 100) * $targetWidth - $qrSize/2);
-                    $qrY = (int)(($cardType->qr_position_y / 100) * $targetHeight - $qrSize/2);
-                    
-                    $image->place($qrCodeImage, $qrX, $qrY);
-                }
-            }
 
             // Add card class if enabled
             if ($cardType->show_card_class && $cardClassName) {
-                $fontSize = max(344, (int)(344 * $scale)); // Fixed size: 344px
+                $fontSize = (int)(20 * $scale); // Fixed size: 20px (much smaller)
                 
                 // Convert percentage positions to absolute pixels
                 $classX = (int)(($cardType->card_class_position_x / 100) * $targetWidth);
@@ -111,6 +98,45 @@ class GuestCardService
                     '#FFFFFF'
                 );
             }
+
+            // Add QR code as TOP LAYER - after all other elements
+            if ($cardType->show_qr_code) {
+                try {
+                    $qrSize = 150; // Reduced size for better proportion
+                    
+                    // Generate QR code
+                    $qrContent = $guest->invite_code;
+                    Log::info("QR Content Generated (Top Layer)", ["content" => $qrContent]);
+                    
+                    $qrCode = QrCode::format('png')
+                        ->size($qrSize)
+                        ->margin(3)
+                        ->generate($qrContent);
+                    
+                    // Convert to base64 data URI
+                    $qrBase64 = base64_encode($qrCode);
+                    $qrDataUri = "data:image/png;base64," . $qrBase64;
+                    Log::info("QR base64 created (Top Layer)", ["length" => strlen($qrBase64)]);
+                    
+                    $qrImage = $manager->read($qrDataUri);
+                    
+                    if ($qrImage) {
+                        // Back to working top-left position
+                        $qrX = 50; // Back to top-left where it was working
+                        $qrY = 50; // Back to top-left where it was working
+                        
+                        Log::info("Placing QR on TOP LAYER", ["qrX" => $qrX, "qrY" => $qrY, "qrSize" => $qrSize]);
+                        
+                        // Place QR as the final layer
+                        $image->place($qrImage, $qrX, $qrY);
+                        
+                        Log::info("QR placed successfully on top layer");
+                    }
+                } catch (\Exception $e) {
+                    Log::error("QR Top Layer failed", ["error" => $e->getMessage()]);
+                }
+            }
+            
 
             // Generate unique filename for this guest card
             $filename = 'guest_cards/' . $guest->invite_code . '_' . time() . '.png';
@@ -143,17 +169,19 @@ class GuestCardService
             if ($guest->qr_code_path) {
                 $qrPath = storage_path('app/public/' . $guest->qr_code_path);
                 if (file_exists($qrPath)) {
-                    $qrSize = (int)(150 * $scale); // Increased QR size for better visibility
+                    $qrSize = (int)(200 * $scale); // Compact QR size
                     return $manager->read($qrPath)->resize($qrSize, $qrSize);
                 }
             }
 
             // Generate QR code if not exists
-            $qrSize = (int)(150 * $scale); // Increased QR size for better visibility
+            $qrSize = (int)(200 * $scale); // Compact QR size
             $qrCode = QrCode::format('png')
                 ->size($qrSize)
-                ->margin(5) // Increased margin for better proportion
-                ->errorCorrection('M')
+                ->margin(10) // Larger white margin for better visibility
+                ->backgroundColor(255, 255, 255) // White background for better contrast
+                ->color(0, 0, 0) // Black QR code for maximum contrast
+                ->errorCorrection('H') // High error correction for better scanning
                 ->generate(route('guest.rsvp', $guest->invite_code));
 
             return $manager->read($qrCode);
@@ -172,6 +200,7 @@ class GuestCardService
         // Add text shadow effect for better visibility
         $image->text($text, $x + 1, $y + 1, function ($font) use ($fontSize) {
             $font->size($fontSize);
+            $font->file("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf");
             $font->color('#FFFFFF');
             $font->align('center');
             $font->valign('middle');
@@ -180,6 +209,7 @@ class GuestCardService
         // Add main text
         $image->text($text, $x, $y, function ($font) use ($fontSize, $color) {
             $font->size($fontSize);
+            $font->file("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf");
             $font->color($color);
             $font->align('center');
             $font->valign('middle');
