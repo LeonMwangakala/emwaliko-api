@@ -106,7 +106,7 @@ class GuestCardService
             // Add QR code if enabled
             if ($cardType->show_qr_code) {
                 try {
-                    $qrSize = 100; // Reduced size for better proportion
+                    $qrSize = 150; // Reduced size for better proportion
                     
                     // Use existing QR code from guest's qr_code_path
                     if (!$guest->qr_code_path) {
