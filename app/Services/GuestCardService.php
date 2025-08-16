@@ -123,6 +123,9 @@ class GuestCardService
                     
                     $qrImage = $manager->read($qrCodePath);
                     
+                    // Resize the QR code to the desired size
+                    $qrImage->resize($qrSize, $qrSize);
+                    
                     if ($qrImage) {
                         // Use event-specific QR positions, fallback to defaults
                         $qrX = (int)((($event->qr_position_x ?? 80) / 100) * $targetWidth);
