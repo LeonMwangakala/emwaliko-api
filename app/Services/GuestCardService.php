@@ -88,8 +88,16 @@ class GuestCardService
                         $font->valign('top');
                     });
                     
-                    // Use canvas approach like frontend
-                    $image = $this->addQrCodeToCanvas($image, $qrCodeData, $qrSize, $event, $manager);
+                    // Try simple place() method with the QR code
+                    $qrBase64 = base64_encode($qrCodeData);
+                    $qrDataUri = "data:image/png;base64," . $qrBase64;
+                    $qrImage = $manager->read($qrDataUri);
+                    
+                    if ($qrImage) {
+                        // Use the same position as the test text
+                        $image->place($qrImage, $qrX, $qrY);
+                        Log::info("QR code placed using place() method at position", ["x" => $qrX, "y" => $qrY]);
+                    }
                     
                 } catch (\Exception $e) {
                     Log::error("QR code generation failed", ["error" => $e->getMessage()]);
