@@ -236,13 +236,17 @@ class GuestCardService
             unlink($tempQrPath);
             
             // Reload the modified image into Intervention Image
-            $image = $manager->read($tempImagePath);
+            $modifiedImage = $manager->read($tempImagePath);
             
             // Clean up temp file
             unlink($tempImagePath);
             
+            return $modifiedImage;
+            
         } catch (\Exception $e) {
             Log::error("Canvas QR code placement failed", ["error" => $e->getMessage()]);
+            // Return original image if QR code placement fails
+            return $image;
         }
     }
 }
