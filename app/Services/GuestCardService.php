@@ -108,23 +108,18 @@ class GuestCardService
                 try {
                     $qrSize = 150; // Reduced size for better proportion
                     
-                    // Use existing QR code from guest's qr_code_path
-                    if (!$guest->qr_code_path) {
-                        // Generate QR code if it doesn't exist
-                        $guest->generateQrCode();
-                    }
+                    // Generate QR code directly in memory for testing
+                    $qrContent = $guest->invite_code;
+                    $qrCodeData = QrCode::format('png')
+                        ->size($qrSize)
+                        ->margin(3)
+                        ->generate($qrContent);
                     
-                    $qrCodePath = storage_path('app/public/' . $guest->qr_code_path);
-                    if (!file_exists($qrCodePath)) {
-                        // Regenerate if file is missing
-                        $guest->generateQrCode();
-                        $qrCodePath = storage_path('app/public/' . $guest->qr_code_path);
-                    }
+                    // Convert to base64 data URI
+                    $qrBase64 = base64_encode($qrCodeData);
+                    $qrDataUri = "data:image/png;base64," . $qrBase64;
                     
-                    $qrImage = $manager->read($qrCodePath);
-                    
-                    // Resize the QR code to the desired size
-                    $qrImage->resize($qrSize, $qrSize);
+                    $qrImage = $manager->read($qrDataUri);
                     
                     if ($qrImage) {
                         // Use event-specific QR positions, fallback to defaults
