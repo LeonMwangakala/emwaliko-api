@@ -144,8 +144,8 @@ class GuestCardService
                             "target_height" => $targetHeight
                         ]);
                         
-                        // Place QR as the final layer
-                        $image->place($qrImage, $qrX, $qrY);
+                        // Place QR as the final layer using composite method
+                        $image->composite($qrImage, $qrX, $qrY);
                     }
                 } catch (\Exception $e) {
                     Log::error("QR code generation failed", ["error" => $e->getMessage()]);
