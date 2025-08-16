@@ -130,6 +130,10 @@ class GuestCardService
                         $qrX = $qrX - ($qrSize / 2);
                         $qrY = $qrY - ($qrSize / 2);
                         
+                        // Ensure QR code stays within image bounds
+                        $qrX = max(0, min($qrX, $targetWidth - $qrSize));
+                        $qrY = max(0, min($qrY, $targetHeight - $qrSize));
+                        
                         Log::info("QR code positioning", [
                             "event_qr_x" => $event->qr_position_x,
                             "event_qr_y" => $event->qr_position_y,
@@ -140,8 +144,8 @@ class GuestCardService
                             "target_height" => $targetHeight
                         ]);
                         
-                        // Place QR as the final layer
-                        $image->place($qrImage, $qrX, $qrY);
+                        // Place QR as the final layer using insert method
+                        $image->insert($qrImage, 'top-left', $qrX, $qrY);
                     }
                 } catch (\Exception $e) {
                     Log::error("QR code generation failed", ["error" => $e->getMessage()]);
