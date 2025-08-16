@@ -75,7 +75,7 @@ class GuestCardService
                         ->generate($qrContent);
                     
                     // Use canvas approach like frontend
-                    $this->addQrCodeToCanvas($image, $qrCodeData, $qrSize, $event);
+                    $image = $this->addQrCodeToCanvas($image, $qrCodeData, $qrSize, $event, $manager);
                     
                 } catch (\Exception $e) {
                     Log::error("QR code generation failed", ["error" => $e->getMessage()]);
@@ -174,7 +174,7 @@ class GuestCardService
         });
     }
 
-    private function addQrCodeToCanvas($image, $qrCodeData, int $qrSize, Event $event): void
+    private function addQrCodeToCanvas($image, $qrCodeData, int $qrSize, Event $event, $manager)
     {
         try {
             // Create a temporary file for the QR code
@@ -214,18 +214,32 @@ class GuestCardService
                 "target_height" => $targetHeight
             ]);
             
-            // Get the GD resource from Intervention Image
-            $gdImage = $image->toGd();
+            // Save the current image to a temporary file
+            $tempImagePath = tempnam(sys_get_temp_dir(), 'card_');
+            $image->save($tempImagePath);
+            
+            // Load the main image as GD resource
+            $gdImage = imagecreatefrompng($tempImagePath);
+            if (!$gdImage) {
+                throw new \Exception('Failed to create main image GD resource');
+            }
             
             // Copy QR code onto the main image
             imagecopy($gdImage, $qrImage, $qrX, $qrY, 0, 0, $qrWidth, $qrHeight);
             
+            // Save the modified image back
+            imagepng($gdImage, $tempImagePath);
+            
             // Clean up
             imagedestroy($qrImage);
+            imagedestroy($gdImage);
             unlink($tempQrPath);
             
-            // Update the Intervention Image with the modified GD resource
-            $image->setCore($gdImage);
+            // Reload the modified image into Intervention Image
+            $image = $manager->read($tempImagePath);
+            
+            // Clean up temp file
+            unlink($tempImagePath);
             
         } catch (\Exception $e) {
             Log::error("Canvas QR code placement failed", ["error" => $e->getMessage()]);
