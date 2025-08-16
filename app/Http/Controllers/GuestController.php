@@ -359,4 +359,67 @@ class GuestController extends Controller
             ], 500);
         }
     }
+
+    public function saveCanvasCard(Request $request)
+    {
+        try {
+            $request->validate([
+                'guest_id' => 'required|exists:guests,id',
+                'canvas_image' => 'required|string', // Base64 image data
+            ]);
+
+            $guest = Guest::findOrFail($request->guest_id);
+            $event = $guest->event;
+
+            // Decode base64 image data
+            $imageData = $request->canvas_image;
+            if (strpos($imageData, 'data:image/png;base64,') === 0) {
+                $imageData = substr($imageData, 22); // Remove data URI prefix
+            }
+
+            $imageData = base64_decode($imageData);
+            if ($imageData === false) {
+                throw new \Exception('Invalid base64 image data');
+            }
+
+            // Generate unique filename
+            $filename = 'guest_cards/' . $guest->invite_code . '_' . time() . '.png';
+            $fullPath = storage_path('app/public/' . $filename);
+
+            // Ensure directory exists
+            $directory = dirname($fullPath);
+            if (!is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+
+            // Save the canvas-generated image
+            file_put_contents($fullPath, $imageData);
+
+            // Return the public URL
+            $publicUrl = url('storage/' . $filename);
+
+            \Log::info('Canvas-generated guest card saved', [
+                'guest_id' => $guest->id,
+                'filename' => $filename,
+                'url' => $publicUrl
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Guest card generated successfully',
+                'card_url' => $publicUrl
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to save canvas-generated guest card', [
+                'error' => $e->getMessage(),
+                'guest_id' => $request->guest_id ?? null
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate guest card: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 } 

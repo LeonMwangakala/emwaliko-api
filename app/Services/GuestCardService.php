@@ -173,6 +173,53 @@ class GuestCardService
         }
     }
 
+    public function generateGuestCardFromCanvas(Guest $guest, Event $event, string $canvasImageData): string
+    {
+        try {
+            // Decode base64 image data
+            $imageData = $canvasImageData;
+            if (strpos($imageData, 'data:image/png;base64,') === 0) {
+                $imageData = substr($imageData, 22); // Remove data URI prefix
+            }
+
+            $imageData = base64_decode($imageData);
+            if ($imageData === false) {
+                throw new \Exception('Invalid base64 image data');
+            }
+
+            // Generate unique filename for this guest card
+            $filename = 'guest_cards/' . $guest->invite_code . '_' . time() . '.png';
+            $fullPath = storage_path('app/public/' . $filename);
+
+            // Ensure directory exists
+            $directory = dirname($fullPath);
+            if (!is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+
+            // Save the canvas-generated image
+            file_put_contents($fullPath, $imageData);
+
+            // Return the public URL for WhatsApp
+            $publicUrl = url('storage/' . $filename);
+
+            Log::info('Canvas-generated guest card saved', [
+                'guest_id' => $guest->id,
+                'event_id' => $event->id,
+                'filename' => $filename,
+                'url' => $publicUrl
+            ]);
+
+            return $publicUrl;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to generate guest card from canvas', [
+                'guest_id' => $guest->id,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
 
 
     private function addTextToImage($image, string $text, int $x, int $y, int $fontSize, string $color): void
