@@ -154,15 +154,7 @@ class GuestCardService
                             "max_y" => $maxY
                         ]);
                         
-                        // Test positioning with a simple text marker
-                        $image->text('QR', $qrX, $qrY, function ($font) {
-                            $font->size(50);
-                            $font->color('#FF0000'); // Red text
-                            $font->align('left');
-                            $font->valign('top');
-                        });
-                        
-                        // Then place the QR code
+                        // Place the QR code at the correct position
                         $image->place($qrImage, $qrX, $qrY);
                     }
                 } catch (\Exception $e) {
