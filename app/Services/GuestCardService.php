@@ -137,10 +137,9 @@ class GuestCardService
                         $qrX = max(0, min($qrX, $maxX));
                         $qrY = max(0, min($qrY, $maxY));
                         
-                        // Test: If position is on the right side (>50%), force it to actually be on the right
-                        if ($event->qr_position_x > 50) {
-                            $qrX = $targetWidth - $qrSize - 50; // 50px from right edge
-                        }
+                        // Test: Force QR code to a simple, fixed position for debugging
+                        $qrX = 100; // 100px from left
+                        $qrY = 100; // 100px from top
                         
                         Log::info("QR code positioning", [
                             "event_qr_x" => $event->qr_position_x,
