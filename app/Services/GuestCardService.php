@@ -74,26 +74,9 @@ class GuestCardService
                         ->margin(3)
                         ->generate($qrContent);
                     
-                    $qrBase64 = base64_encode($qrCodeData);
-                    $qrDataUri = "data:image/png;base64," . $qrBase64;
-                    $qrImage = $manager->read($qrDataUri);
+                    // Use canvas approach like frontend
+                    $this->addQrCodeToCanvas($image, $qrCodeData, $qrSize, $event);
                     
-                    if ($qrImage) {
-                        // Simple fixed position for testing
-                        $qrX = 100;
-                        $qrY = 100;
-                        
-                        Log::info("QR code positioning", [
-                            "qr_x" => $qrX,
-                            "qr_y" => $qrY,
-                            "qr_size" => $qrSize,
-                            "target_width" => $targetWidth,
-                            "target_height" => $targetHeight
-                        ]);
-                        
-                        // Place QR code FIRST
-                        $image->place($qrImage, $qrX, $qrY);
-                    }
                 } catch (\Exception $e) {
                     Log::error("QR code generation failed", ["error" => $e->getMessage()]);
                 }
@@ -189,5 +172,63 @@ class GuestCardService
             $font->align('center');
             $font->valign('middle');
         });
+    }
+
+    private function addQrCodeToCanvas($image, $qrCodeData, int $qrSize, Event $event): void
+    {
+        try {
+            // Create a temporary file for the QR code
+            $tempQrPath = tempnam(sys_get_temp_dir(), 'qr_');
+            file_put_contents($tempQrPath, $qrCodeData);
+            
+            // Load QR code image
+            $qrImage = imagecreatefrompng($tempQrPath);
+            if (!$qrImage) {
+                throw new \Exception('Failed to create QR code image');
+            }
+            
+            // Get QR code dimensions
+            $qrWidth = imagesx($qrImage);
+            $qrHeight = imagesy($qrImage);
+            
+            // Calculate position based on event settings
+            $targetWidth = $image->width();
+            $targetHeight = $image->height();
+            
+            $qrX = (int)((($event->qr_position_x ?? 80) / 100) * $targetWidth);
+            $qrY = (int)((($event->qr_position_y ?? 70) / 100) * $targetHeight);
+            
+            // Ensure QR code stays within bounds
+            $maxX = $targetWidth - $qrSize;
+            $maxY = $targetHeight - $qrSize;
+            $qrX = max(0, min($qrX, $maxX));
+            $qrY = max(0, min($qrY, $maxY));
+            
+            Log::info("Canvas QR code positioning", [
+                "event_qr_x" => $event->qr_position_x,
+                "event_qr_y" => $event->qr_position_y,
+                "calculated_x" => $qrX,
+                "calculated_y" => $qrY,
+                "qr_size" => $qrSize,
+                "target_width" => $targetWidth,
+                "target_height" => $targetHeight
+            ]);
+            
+            // Get the GD resource from Intervention Image
+            $gdImage = $image->toGd();
+            
+            // Copy QR code onto the main image
+            imagecopy($gdImage, $qrImage, $qrX, $qrY, 0, 0, $qrWidth, $qrHeight);
+            
+            // Clean up
+            imagedestroy($qrImage);
+            unlink($tempQrPath);
+            
+            // Update the Intervention Image with the modified GD resource
+            $image->setCore($gdImage);
+            
+        } catch (\Exception $e) {
+            Log::error("Canvas QR code placement failed", ["error" => $e->getMessage()]);
+        }
     }
 }
