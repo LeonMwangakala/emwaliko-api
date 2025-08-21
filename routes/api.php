@@ -22,6 +22,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\EventScannerController;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -74,6 +75,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('events/{event}/scans', [ScanController::class, 'getEventScans']);
     Route::post('events/{event}/scans', [ScanController::class, 'createScan']);
     Route::post('events/{event}/scans/guest-by-qr', [ScanController::class, 'getGuestByQrCode']);
+    
+    // Event Scanner routes
+    Route::get('events/{event}/scanners', [EventScannerController::class, 'getEventScanners']);
+    Route::post('events/{event}/scanners', [EventScannerController::class, 'assignScanner']);
+    Route::post('events/{event}/scanners/bulk', [EventScannerController::class, 'bulkAssignScanners']);
+    Route::put('events/{event}/scanners/{scanner}/role', [EventScannerController::class, 'updateScannerRole']);
+    Route::patch('events/{event}/scanners/{scanner}/deactivate', [EventScannerController::class, 'deactivateScanner']);
+    Route::patch('events/{event}/scanners/{scanner}/reactivate', [EventScannerController::class, 'reactivateScanner']);
+    Route::get('/scanners/available', [EventScannerController::class, 'getAvailableScanners']);
     
     // Sales routes
     Route::get('/sales', [SalesController::class, 'index']);
@@ -145,6 +155,7 @@ Route::delete('guests/{guest}/card', [GuestController::class, 'deleteGuestCard']
     
     // Scanner users route
     Route::get('/users/scanners', [AuthController::class, 'getScannerUsers']);
+    Route::get('/scanner/my-events', [AuthController::class, 'getMyScannerEvents']);
     
     // User management routes
     Route::get('/users', [UserController::class, 'index']);

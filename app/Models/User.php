@@ -96,4 +96,60 @@ use HasFactory, Notifiable, \Laravel\Sanctum\HasApiTokens;
     {
         return $this->belongsTo(Role::class);
     }
+
+    /**
+     * Get all scanner assignments for this user
+     */
+    public function scannerAssignments()
+    {
+        return $this->hasMany(EventScanner::class);
+    }
+
+    /**
+     * Get active scanner assignments for this user
+     */
+    public function activeScannerAssignments()
+    {
+        return $this->hasMany(EventScanner::class)->active();
+    }
+
+    /**
+     * Get events where this user is assigned as a scanner
+     */
+    public function scannerEvents()
+    {
+        return $this->belongsToMany(Event::class, 'event_scanners')
+                    ->withPivot(['role', 'is_active', 'assigned_at'])
+                    ->wherePivot('is_active', true);
+    }
+
+    /**
+     * Check if user is a scanner (has scanner role)
+     */
+    public function isScanner(): bool
+    {
+        return $this->role && in_array(strtolower($this->role->name), ['scanner']);
+    }
+
+    /**
+     * Check if user is assigned to a specific event as scanner
+     */
+    public function isAssignedToEvent(int $eventId): bool
+    {
+        return $this->activeScannerAssignments()
+                    ->where('event_id', $eventId)
+                    ->exists();
+    }
+
+    /**
+     * Get scanner role for a specific event
+     */
+    public function getScannerRoleForEvent(int $eventId): ?string
+    {
+        $assignment = $this->activeScannerAssignments()
+                           ->where('event_id', $eventId)
+                           ->first();
+        
+        return $assignment ? $assignment->role : null;
+    }
 }

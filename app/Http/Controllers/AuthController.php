@@ -74,26 +74,40 @@ class AuthController extends Controller
         ]);
     }
 
-    public function getScannerUsers(Request $request): JsonResponse
+    /**
+     * Get scanner users
+     */
+    public function getScannerUsers(): JsonResponse
     {
-        // Only admin can access this
-        if ($request->user()->role_id !== 1) {
-            return response()->json(['message' => 'Not authorized'], 403);
-        }
+        $scanners = User::whereHas('role', function ($query) {
+                        $query->where('name', 'scanner');
+                    })
+                    ->with('role:id,name')
+                    ->select('id', 'name', 'email', 'role_id')
+                    ->orderBy('name')
+                    ->get();
 
-        // Get the scanner role
-        $scannerRole = Role::where('name', 'Scanner')->first();
+        return response()->json(['data' => $scanners]);
+    }
+
+    /**
+     * Get events assigned to the authenticated scanner user
+     */
+    public function getMyScannerEvents(): JsonResponse
+    {
+        $user = auth()->user();
         
-        if (!$scannerRole) {
-            return response()->json([]);
+        if (!$user || !$user->isScanner()) {
+            return response()->json([
+                'message' => 'Unauthorized. User must be a scanner.'
+            ], 403);
         }
 
-        // Get all users with scanner role
-        $scannerUsers = User::where('role_id', $scannerRole->id)
-            ->select('id', 'name', 'email', 'phone_number')
-            ->orderBy('name', 'asc')
-            ->get();
+        $events = $user->scannerEvents()
+                      ->with(['customer:id,name', 'eventType:id,name', 'cardType:id,name'])
+                      ->orderBy('event_date', 'desc')
+                      ->get();
 
-        return response()->json($scannerUsers);
+        return response()->json(['data' => $events]);
     }
 } 

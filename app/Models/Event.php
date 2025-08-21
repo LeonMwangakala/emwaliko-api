@@ -126,6 +126,83 @@ class Event extends Model
         return $this->hasMany(Sales::class);
     }
 
+    /**
+     * Get all scanner assignments for this event
+     */
+    public function scanners(): HasMany
+    {
+        return $this->hasMany(EventScanner::class);
+    }
+
+    /**
+     * Get active scanner assignments for this event
+     */
+    public function activeScanners(): HasMany
+    {
+        return $this->hasMany(EventScanner::class)->active();
+    }
+
+    /**
+     * Get primary scanner for this event
+     */
+    public function primaryScanner(): HasMany
+    {
+        return $this->hasMany(EventScanner::class)->active()->primary();
+    }
+
+    /**
+     * Get all scanner users for this event
+     */
+    public function scannerUsers()
+    {
+        return $this->belongsToMany(User::class, 'event_scanners')
+                    ->withPivot(['role', 'is_active', 'assigned_at'])
+                    ->wherePivot('is_active', true);
+    }
+
+    /**
+     * Get the primary scanner user
+     */
+    public function primaryScannerUser()
+    {
+        return $this->belongsToMany(User::class, 'event_scanners')
+                    ->withPivot(['role', 'is_active', 'assigned_at'])
+                    ->wherePivot('is_active', true)
+                    ->wherePivot('role', 'primary')
+                    ->first();
+    }
+
+    /**
+     * Get all secondary scanner users
+     */
+    public function secondaryScannerUsers()
+    {
+        return $this->belongsToMany(User::class, 'event_scanners')
+                    ->withPivot(['role', 'is_active', 'assigned_at'])
+                    ->wherePivot('is_active', true)
+                    ->wherePivot('role', 'secondary');
+    }
+
+    /**
+     * Check if a user is assigned as a scanner for this event
+     */
+    public function isUserAssignedAsScanner(int $userId): bool
+    {
+        return $this->scanners()
+                    ->where('user_id', $userId)
+                    ->where('is_active', true)
+                    ->exists();
+    }
+
+    /**
+     * Get scanner person (for backward compatibility)
+     */
+    public function getScannerPersonAttribute(): ?string
+    {
+        $primaryScanner = $this->primaryScannerUser();
+        return $primaryScanner ? $primaryScanner->name : null;
+    }
+
     public function getCardDesignBase64Attribute(): string
     {
         if (!$this->card_design_path) {

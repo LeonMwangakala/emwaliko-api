@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             CardClassSeeder::class,
             PackageSeeder::class,
             CustomerSeeder::class,
+            ScannerRoleSeeder::class,
         ]);
 
         // Create a default admin user
