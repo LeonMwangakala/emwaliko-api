@@ -37,6 +37,35 @@ use HasFactory, Notifiable, \Laravel\Sanctum\HasApiTokens;
     ];
 
     /**
+     * Get the user's full name
+     */
+    public function getFullNameAttribute(): string
+    {
+        if ($this->first_name && $this->last_name) {
+            return trim($this->first_name . ' ' . $this->last_name);
+        }
+        return $this->name;
+    }
+
+    /**
+     * Get the display name (alias for full_name)
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->full_name;
+    }
+
+    /**
+     * Set the name field based on first_name and last_name
+     */
+    public function setNameFromFirstLast(): void
+    {
+        if ($this->first_name && $this->last_name) {
+            $this->name = trim($this->first_name . ' ' . $this->last_name);
+        }
+    }
+
+    /**
      * The attributes that should be hidden for serialization.
      *
      * @var list<string>
@@ -74,6 +103,16 @@ use HasFactory, Notifiable, \Laravel\Sanctum\HasApiTokens;
             // Set default bio if not provided
             if (empty($user->bio)) {
                 $user->bio = 'KadiRafiki Team Member';
+            }
+
+            // Ensure name field is populated
+            $user->setNameFromFirstLast();
+        });
+
+        static::updating(function ($user) {
+            // Ensure name field is populated when first_name or last_name change
+            if ($user->isDirty(['first_name', 'last_name'])) {
+                $user->setNameFromFirstLast();
             }
         });
     }

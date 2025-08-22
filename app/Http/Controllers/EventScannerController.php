@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use App\Models\Role; // Added this import for the new test method
 
 class EventScannerController extends Controller
 {
@@ -156,7 +157,7 @@ class EventScannerController extends Controller
     public function getAvailableScanners(): JsonResponse
     {
         $scanners = User::whereHas('role', function ($query) {
-                        $query->where('name', 'scanner');
+                        $query->whereRaw('LOWER(name) = ?', ['scanner']);
                     })
                     ->with('role:id,name')
                     ->select('id', 'name', 'email', 'role_id')

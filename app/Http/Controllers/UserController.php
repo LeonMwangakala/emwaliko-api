@@ -22,7 +22,8 @@ class UserController extends Controller
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('first_name', 'like', "%{$search}%")
                   ->orWhere('last_name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
                   ->orWhere('phone_number', 'like', "%{$search}%");
@@ -51,9 +52,9 @@ class UserController extends Controller
      */
     public function getAll(): JsonResponse
     {
-        $users = User::select('id', 'first_name', 'last_name', 'email', 'status')
+        $users = User::select('id', 'name', 'first_name', 'last_name', 'email', 'status')
                     ->where('status', 'active')
-                    ->orderBy('first_name')
+                    ->orderBy('name')
                     ->get();
 
         return response()->json($users);
@@ -74,8 +75,9 @@ class UserController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
+            'name' => 'sometimes|string|max:255',
+            'first_name' => 'sometimes|string|max:255',
+            'last_name' => 'sometimes|string|max:255',
             'email' => 'required|email|unique:users,email',
             'phone_number' => 'required|string|max:255',
             'password' => 'required|string|min:8',
@@ -83,9 +85,17 @@ class UserController extends Controller
             'status' => 'sometimes|in:active,inactive',
         ]);
 
+        // Ensure name field is populated
+        if (isset($validated['first_name']) && isset($validated['last_name'])) {
+            $validated['name'] = trim($validated['first_name'] . ' ' . $validated['last_name']);
+        } elseif (!isset($validated['name'])) {
+            $validated['name'] = 'User'; // Default name if neither is provided
+        }
+
         $user = User::create([
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
+            'name' => $validated['name'],
+            'first_name' => $validated['first_name'] ?? null,
+            'last_name' => $validated['last_name'] ?? null,
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'],
             'password' => Hash::make($validated['password']),
@@ -107,8 +117,9 @@ class UserController extends Controller
     public function update(Request $request, User $user): JsonResponse
     {
         $validated = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
+            'name' => 'sometimes|string|max:255',
+            'first_name' => 'sometimes|string|max:255',
+            'last_name' => 'sometimes|string|max:255',
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
             'phone_number' => 'required|string|max:255',
             'password' => 'sometimes|string|min:8',
@@ -116,9 +127,19 @@ class UserController extends Controller
             'status' => 'sometimes|in:active,inactive',
         ]);
 
+        // Ensure name field is populated
+        if (isset($validated['first_name']) && isset($validated['last_name'])) {
+            $validated['name'] = trim($validated['first_name'] . ' ' . $validated['last_name']);
+        } elseif (isset($validated['name'])) {
+            // If only name is provided, clear first_name and last_name
+            $validated['first_name'] = null;
+            $validated['last_name'] = null;
+        }
+
         $updateData = [
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
+            'name' => $validated['name'] ?? $user->name,
+            'first_name' => $validated['first_name'] ?? $user->first_name,
+            'last_name' => $validated['last_name'] ?? $user->last_name,
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'],
             'role_id' => $validated['role_id'],

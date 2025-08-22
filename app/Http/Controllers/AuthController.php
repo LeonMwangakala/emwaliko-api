@@ -80,7 +80,7 @@ class AuthController extends Controller
     public function getScannerUsers(): JsonResponse
     {
         $scanners = User::whereHas('role', function ($query) {
-                        $query->where('name', 'scanner');
+                        $query->whereRaw('LOWER(name) = ?', ['scanner']);
                     })
                     ->with('role:id,name')
                     ->select('id', 'name', 'email', 'role_id')
