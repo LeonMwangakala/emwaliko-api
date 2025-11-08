@@ -32,12 +32,12 @@ class DatabaseSeeder extends Seeder
             'name' => 'Admin User',
             'first_name' => 'Admin',
             'last_name' => 'User',
-            'email' => 'admin@kadirafiki.com',
+            'email' => 'admin@emwaliko.com',
             'phone_number' => '+255762000043',
-            'bio' => 'KadiRafiki Team Member',
-            'country' => 'Kenya',
-            'region' => 'Nairobi',
-            'postal_code' => '00100',
+            'bio' => 'Emwaliko Team Member',
+            'country' => 'Tanzania',
+            'region' => 'Dar es Salaam',
+            'postal_code' => '15129',
             'role_id' => 1, // Admin role
         ]);
     }
