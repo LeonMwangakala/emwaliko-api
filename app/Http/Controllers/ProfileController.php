@@ -14,6 +14,7 @@ class ProfileController extends Controller
     public function show(Request $request): JsonResponse
     {
         $user = $request->user();
+        $user->loadMissing('role');
         
         return response()->json([
             'id' => $user->id,
@@ -29,6 +30,7 @@ class ProfileController extends Controller
             'postal_code' => $user->postal_code,
             'profile_picture' => $user->profile_picture,
             'role_id' => $user->role_id,
+            'role_name' => $user->role_name,
         ]);
     }
 
@@ -51,6 +53,7 @@ class ProfileController extends Controller
         $validated['name'] = $validated['first_name'] . ' ' . $validated['last_name'];
 
         $user->update($validated);
+        $user->loadMissing('role');
 
         return response()->json([
             'message' => 'Profile updated successfully',
@@ -68,6 +71,7 @@ class ProfileController extends Controller
                 'postal_code' => $user->postal_code,
                 'profile_picture' => $user->profile_picture,
                 'role_id' => $user->role_id,
+                'role_name' => $user->role_name,
             ]
         ]);
     }
@@ -94,6 +98,7 @@ class ProfileController extends Controller
             
             // Update user profile picture path
             $user->update(['profile_picture' => $path]);
+            $user->loadMissing('role');
 
             return response()->json([
                 'message' => 'Profile picture updated successfully',
@@ -112,6 +117,7 @@ class ProfileController extends Controller
                     'postal_code' => $user->postal_code,
                     'profile_picture' => $user->profile_picture,
                     'role_id' => $user->role_id,
+                    'role_name' => $user->role_name,
                 ]
             ]);
 

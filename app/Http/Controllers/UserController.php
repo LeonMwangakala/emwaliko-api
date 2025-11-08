@@ -210,12 +210,15 @@ class UserController extends Controller
     public function destroy(User $user): JsonResponse
     {
         // Prevent deleting the last admin
-        if ($user->role_id === 1) {
-            $adminCount = User::where('role_id', 1)->count();
-            if ($adminCount <= 1) {
-                return response()->json([
-                    'message' => 'Cannot delete the last admin user'
-                ], 422);
+        if ($user->hasRole('Admin')) {
+            $adminRoleId = Role::where('name', 'Admin')->value('id');
+            if ($adminRoleId) {
+                $adminCount = User::where('role_id', $adminRoleId)->count();
+                if ($adminCount <= 1) {
+                    return response()->json([
+                        'message' => 'Cannot delete the last admin user'
+                    ], 422);
+                }
             }
         }
 
@@ -231,12 +234,15 @@ class UserController extends Controller
      */
     public function getStatistics(): JsonResponse
     {
+        $adminRoleId = Role::where('name', 'Admin')->value('id');
+        $scannerRoleId = Role::where('name', 'Scanner')->value('id');
+
         $stats = [
             'total_users' => User::count(),
             'active_users' => User::where('status', 'active')->count(),
             'inactive_users' => User::where('status', 'inactive')->count(),
-            'admin_users' => User::where('role_id', 1)->count(),
-            'scanner_users' => User::where('role_id', 2)->count(),
+            'admin_users' => $adminRoleId ? User::where('role_id', $adminRoleId)->count() : 0,
+            'scanner_users' => $scannerRoleId ? User::where('role_id', $scannerRoleId)->count() : 0,
         ];
 
         return response()->json($stats);
