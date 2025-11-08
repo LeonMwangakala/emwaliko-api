@@ -9,14 +9,12 @@ class RoleSeeder extends Seeder
 {
     public function run(): void
     {
-        $roles = [
-            ['name' => 'Admin'],
-            ['name' => 'Customer'],
-            ['name' => 'Scanner']
-        ];
+        $roles = ['Admin', 'Scanner', 'Customer'];
 
-        foreach ($roles as $role) {
-            Role::firstOrCreate($role);
+        foreach ($roles as $roleName) {
+            Role::firstOrCreate(['name' => $roleName]);
         }
+
+        Role::whereNotIn('name', $roles)->delete();
     }
 } 
