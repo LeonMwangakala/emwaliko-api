@@ -11,7 +11,7 @@ class CardClassController extends Controller
     public function index(Request $request): JsonResponse
     {
         // Only admin
-        if ($request->user()->role_id !== 1) {
+        if (!$request->user()?->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
         return response()->json(CardClass::orderBy('name', 'asc')->get());
@@ -19,7 +19,7 @@ class CardClassController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        if ($request->user()->role_id !== 1) {
+        if (!$request->user()?->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
         $validated = $request->validate([
@@ -33,7 +33,7 @@ class CardClassController extends Controller
 
     public function update(Request $request, CardClass $cardClass): JsonResponse
     {
-        if ($request->user()->role_id !== 1) {
+        if (!$request->user()?->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
         $validated = $request->validate([
@@ -47,7 +47,7 @@ class CardClassController extends Controller
 
     public function toggleStatus(Request $request, CardClass $cardClass): JsonResponse
     {
-        if ($request->user()->role_id !== 1) {
+        if (!$request->user()?->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
         $cardClass->status = $cardClass->status === 'Active' ? 'Inactive' : 'Active';

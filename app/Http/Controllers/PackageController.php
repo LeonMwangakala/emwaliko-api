@@ -10,16 +10,16 @@ class PackageController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        // Only admin
-        if ($request->user()->role_id !== 1) {
+        if (!$request->user()?->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
+
         return response()->json(Package::orderBy('name', 'asc')->get());
     }
 
     public function store(Request $request): JsonResponse
     {
-        if ($request->user()->role_id !== 1) {
+        if (!$request->user()?->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
         $validated = $request->validate([
@@ -37,7 +37,7 @@ class PackageController extends Controller
 
     public function update(Request $request, Package $package): JsonResponse
     {
-        if ($request->user()->role_id !== 1) {
+        if (!$request->user()?->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
         $validated = $request->validate([
@@ -52,7 +52,7 @@ class PackageController extends Controller
 
     public function toggleStatus(Request $request, Package $package): JsonResponse
     {
-        if ($request->user()->role_id !== 1) {
+        if (!$request->user()?->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
         $package->status = $package->status === 'Active' ? 'Inactive' : 'Active';

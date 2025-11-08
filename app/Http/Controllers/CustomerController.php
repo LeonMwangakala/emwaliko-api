@@ -98,7 +98,7 @@ class CustomerController extends Controller
     public function toggleStatus(Request $request, Customer $customer): JsonResponse
     {
         $user = $request->user();
-        if (!$user || $user->role_id !== 1) {
+        if (!$user || !$user->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
         $customer->status = $customer->status === 'Active' ? 'Inactive' : 'Active';
@@ -109,7 +109,7 @@ class CustomerController extends Controller
     public function activate(Request $request, Customer $customer): JsonResponse
     {
         $user = $request->user();
-        if (!$user || $user->role_id !== 1) {
+        if (!$user || !$user->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
         $customer->status = 'Active';
@@ -120,7 +120,7 @@ class CustomerController extends Controller
     public function deactivate(Request $request, Customer $customer): JsonResponse
     {
         $user = $request->user();
-        if (!$user || $user->role_id !== 1) {
+        if (!$user || !$user->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
         $customer->status = 'Inactive';

@@ -76,6 +76,22 @@ use HasFactory, Notifiable, \Laravel\Sanctum\HasApiTokens;
     ];
 
     /**
+     * Determine if the user has a specific role (case-insensitive).
+     */
+    public function hasRole(string $role): bool
+    {
+        return $this->role && strcasecmp($this->role->name, $role) === 0;
+    }
+
+    /**
+     * Determine if the user has the admin role.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('Admin');
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -167,7 +183,15 @@ use HasFactory, Notifiable, \Laravel\Sanctum\HasApiTokens;
      */
     public function isScanner(): bool
     {
-        return $this->role && in_array(strtolower($this->role->name), ['scanner']);
+        return $this->hasRole('Scanner');
+    }
+
+    /**
+     * Accessor for the user's role name.
+     */
+    public function getRoleNameAttribute(): ?string
+    {
+        return $this->role?->name;
     }
 
     /**

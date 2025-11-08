@@ -11,16 +11,16 @@ class EventTypeController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        // Only admin
-        if ($request->user()->role_id !== 1) {
+        if (!$request->user()?->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
+
         return response()->json(EventType::orderBy('name', 'asc')->get());
     }
 
     public function store(Request $request): JsonResponse
     {
-        if ($request->user()->role_id !== 1) {
+        if (!$request->user()?->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
         $validated = $request->validate([
@@ -39,7 +39,7 @@ class EventTypeController extends Controller
 
     public function update(Request $request, EventType $eventType): JsonResponse
     {
-        if ($request->user()->role_id !== 1) {
+        if (!$request->user()?->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
         $validated = $request->validate([
@@ -58,7 +58,7 @@ class EventTypeController extends Controller
 
     public function toggleStatus(Request $request, EventType $eventType): JsonResponse
     {
-        if ($request->user()->role_id !== 1) {
+        if (!$request->user()?->isAdmin()) {
             return response()->json(['message' => 'Not authorized'], 403);
         }
         $eventType->status = $eventType->status === 'Active' ? 'Inactive' : 'Active';

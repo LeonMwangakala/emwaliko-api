@@ -40,6 +40,8 @@ class AuthController extends Controller
             ]);
         }
 
+        $user->loadMissing('role');
+
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
@@ -49,6 +51,7 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'phone_number' => $user->phone_number,
                 'role_id' => $user->role_id,
+                'role_name' => $user->role_name,
             ],
             'token' => $token,
         ]);
@@ -64,13 +67,16 @@ class AuthController extends Controller
     public function user(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
+        $user->loadMissing('role');
+
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'phone_number' => $user->phone_number,
             'role_id' => $user->role_id,
+            'role_name' => $user->role_name,
         ]);
     }
 
