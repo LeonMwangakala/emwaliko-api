@@ -25,7 +25,10 @@ return [
         'http://localhost:3000',
         'https://desk.kadirafiki.com',
         'https://admin.kadirafiki.com',
-        'https://kadirafiki.com'
+        'https://kadirafiki.com',
+        'https://super.emwaliko.com',
+        'https://miracle.emwaliko.com',
+        'https://emwaliko.com',
     ],
 
     'allowed_origins_patterns' => [],
