@@ -19,7 +19,7 @@ class UpdateEventCodes extends Command
      *
      * @var string
      */
-    protected $description = 'Update all events to have event codes in the KREC + 6-digit pattern';
+    protected $description = 'Update all events to have event codes in the EMEC + 6-digit pattern';
 
     /**
      * Execute the console command.
@@ -29,13 +29,13 @@ class UpdateEventCodes extends Command
         $events = Event::all();
         $updated = 0;
         foreach ($events as $event) {
-            // Skip if already matches the pattern
-            if (preg_match('/^KREC\d{6}$/', $event->event_code)) {
+            // Skip if already matches the new pattern
+            if (preg_match('/^EMEC\d{6}$/', $event->event_code)) {
                 continue;
             }
             // Generate a unique code
             do {
-                $code = 'KREC' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                $code = 'EMEC' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
             } while (Event::where('event_code', $code)->exists());
             $event->event_code = $code;
             $event->save();

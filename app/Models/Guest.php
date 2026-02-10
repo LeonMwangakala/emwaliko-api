@@ -19,6 +19,7 @@ class Guest extends Model
         'name',
         'title',
         'phone_number',
+        'table_number',
         'card_class_id',
         'invite_code',
         'qr_code_path',

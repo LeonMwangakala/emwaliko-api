@@ -10,7 +10,7 @@ class Package extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'amount', 'currency', 'status'];
+    protected $fillable = ['name', 'amount', 'currency', 'status', 'description'];
 
     protected $casts = [
         'amount' => 'decimal:2'

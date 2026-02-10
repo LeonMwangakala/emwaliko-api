@@ -26,6 +26,7 @@ class GuestController extends Controller
             'name' => 'required|string|max:255',
             'title' => 'nullable|string|max:255',
             'phone_number' => 'required|string|max:20',
+            'table_number' => 'nullable|integer|min:1',
             'card_class_id' => 'required|exists:card_classes,id',
             'rsvp_status' => 'sometimes|in:Yes,No,Maybe,Pending'
         ]);
@@ -76,6 +77,7 @@ class GuestController extends Controller
             'name' => 'sometimes|required|string|max:255',
             'title' => 'nullable|string|max:255',
             'phone_number' => 'sometimes|required|string|max:20',
+            'table_number' => 'nullable|integer|min:1',
             'card_class_id' => 'sometimes|required|exists:card_classes,id',
             'rsvp_status' => 'sometimes|in:Yes,No,Maybe,Pending'
         ]);
@@ -168,7 +170,8 @@ class GuestController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('title', 'like', "%{$search}%")
-                  ->orWhere('phone_number', 'like', "%{$search}%");
+                  ->orWhere('phone_number', 'like', "%{$search}%")
+                  ->orWhere('table_number', 'like', "%{$search}%");
             });
         }
         
@@ -203,6 +206,7 @@ class GuestController extends Controller
             'guests.*.name' => 'required|string|max:255',
             'guests.*.title' => 'nullable|string|max:255',
             'guests.*.phone_number' => 'required|string|max:20',
+            'guests.*.table_number' => 'nullable|integer|min:1',
             'guests.*.card_class_id' => 'required|exists:card_classes,id'
         ]);
 

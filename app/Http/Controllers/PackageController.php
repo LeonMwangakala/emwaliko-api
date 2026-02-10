@@ -25,6 +25,7 @@ class PackageController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:packages,name',
             'amount' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
             'currency' => 'string|max:10',
             'status' => 'in:Active,Inactive',
         ]);
@@ -43,6 +44,7 @@ class PackageController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:packages,name,' . $package->id,
             'amount' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
             'currency' => 'string|max:10',
             'status' => 'in:Active,Inactive',
         ]);

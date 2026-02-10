@@ -18,9 +18,9 @@ class Event extends Model
 
         static::creating(function ($event) {
             if (empty($event->event_code)) {
-                // Generate a unique event code: KREC + 6 unique digits
+                // Generate a unique event code: EMEC + 6 unique digits
                 do {
-                    $code = 'KREC' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                    $code = 'EMEC' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
                 } while (self::where('event_code', $code)->exists());
                 $event->event_code = $code;
             }
