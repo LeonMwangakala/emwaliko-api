@@ -28,7 +28,9 @@ return [
         'https://kadirafiki.com',
         'https://super.emwaliko.com',
         'https://miracle.emwaliko.com',
+        'https://admin.emwaliko.com',
         'https://emwaliko.com',
+        'https://www.emwaliko.com',
     ],
 
     'allowed_origins_patterns' => [],
