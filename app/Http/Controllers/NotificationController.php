@@ -227,11 +227,11 @@ class NotificationController extends Controller
         if ($validated['notification_type'] === 'SMS' && !empty($smsToNumbers)) {
             $messages = [];
             foreach ($smsToNumbers as $msg => $numbers) {
-                $messages[] = [
-                    'from' => 'KadiRafiki',
-                    'to' => $numbers,
-                    'text' => $msg,
-                ];
+            $messages[] = [
+                'from' => 'eMwaliko',
+                'to' => $numbers,
+                'text' => $msg,
+            ];
             }
             $smsService = new NextSmsService();
             $reference = 'ref_' . time() . '_' . uniqid() . '_' . rand(1000, 9999);
@@ -439,8 +439,8 @@ class NotificationController extends Controller
                 $eventDate ? $eventDate->format('d/m/Y') : 'TBD',
                 $eventDate ? $eventDate->format('H:i') : 'TBD',
                 $event->event_location ?? 'TBD',
-                $guest->invite_code ?? 'KRGC123456',
-                'https://kadirafiki.com/rsvp/' . ($guest->invite_code ?? 'KRGC123456'),
+                $guest->invite_code ?? 'EMGC123456',
+                'https://emwaliko.com/rsvp/' . ($guest->invite_code ?? 'EMGC123456'),
                 '+255700000000',
                 '+255750000000'
             ],
