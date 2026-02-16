@@ -33,9 +33,9 @@ class Guest extends Model
 
         static::creating(function ($guest) {
             if (empty($guest->invite_code)) {
-                // Generate a unique invite code: KRGC + 6 unique digits
+                // Generate a unique invite code: EMGC + 6 unique digits
                 do {
-                    $code = 'KRGC' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                    $code = 'EMGC' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
                 } while (self::where('invite_code', $code)->exists());
                 $guest->invite_code = $code;
             }

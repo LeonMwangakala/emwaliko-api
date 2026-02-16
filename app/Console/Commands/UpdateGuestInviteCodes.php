@@ -19,7 +19,7 @@ class UpdateGuestInviteCodes extends Command
      *
      * @var string
      */
-    protected $description = 'Update all guests to have invite codes in the KRGC + 6-digit pattern';
+    protected $description = 'Update all guests to have invite codes in the EMGC + 6-digit pattern';
 
     /**
      * Execute the console command.
@@ -29,13 +29,13 @@ class UpdateGuestInviteCodes extends Command
         $guests = Guest::all();
         $updated = 0;
         foreach ($guests as $guest) {
-            // Skip if already matches the pattern
-            if (preg_match('/^KRGC\d{6}$/', $guest->invite_code)) {
+            // Skip if already matches the new pattern
+            if (preg_match('/^EMGC\d{6}$/', $guest->invite_code)) {
                 continue;
             }
             // Generate a unique code
             do {
-                $code = 'KRGC' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                $code = 'EMGC' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
             } while (Guest::where('invite_code', $code)->exists());
             $guest->invite_code = $code;
             $guest->save();
